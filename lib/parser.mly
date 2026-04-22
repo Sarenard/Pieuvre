@@ -5,7 +5,7 @@ open Expr
 /* PARTIE 2, on liste les lexèmes (lien avec le fichier lexer.mll) ******* */                                   
 %token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL
 /*TACTICS*/
-%token INTRO TRIVIAL
+%token INTRO TRIVIAL EXACT
 %token <int> INT       /* le lexème INT a un attribut entier */
 %token <string> VAR
 %token <string> TYPE
@@ -25,10 +25,10 @@ open Expr
 %%
 
 main:
-  | e=expression EOF { e }
+  | e=lambdaterm EOF { e }
 
-expression:
-  | FUN LPAREN x=VAR COLON t=term RPAREN BIGARROW e=expression {Func(x, t, e)}
+lambdaterm:
+  | FUN LPAREN x=VAR COLON t=term RPAREN BIGARROW e=lambdaterm {Func(x, t, e)}
   | applic { $1 }
 
 applic:
@@ -52,3 +52,4 @@ tactic_main:
 tactic:
   | INTRO x=VAR { Intro x }
   | TRIVIAL { Trivial }
+  | EXACT t=lambdaterm { Exact(t) }

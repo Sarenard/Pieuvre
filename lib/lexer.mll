@@ -23,6 +23,7 @@ rule token = parse
 
   | "intro"             { INTRO }
   | "trivial"             { TRIVIAL }
+  | "exact"             { EXACT }
 
   | var as s { VAR s }
   | type as s { TYPE s }

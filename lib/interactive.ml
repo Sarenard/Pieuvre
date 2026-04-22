@@ -66,11 +66,10 @@ let handle_tactic (i, gamma, _locgoal) term tactic =
     let replace_goal goal = (match goal with
       | Goal(k, Pi("_", a, b)) when k=i -> Func(x, a, Goal(k, b))
       | _ -> goal
-    )
-    in run_replace term replace_goal
+    ) in run_replace term replace_goal
   | Trivial ->
     let replace_goal goal = (match goal with
-      | Goal(k, ty) -> 
+      | Goal(k, ty) when k=i -> 
         begin
           match List.find_opt (fun (_y, ty') -> alpha ty' ty) gamma with
           | Some (y, _ty') ->
@@ -79,8 +78,18 @@ let handle_tactic (i, gamma, _locgoal) term tactic =
               goal
         end
       | _ -> goal
-    )
-    in run_replace term replace_goal
+    ) in run_replace term replace_goal
+  | Exact(t) ->
+    let replace_goal goal = (match goal with
+      | Goal(k, ty) when k=i ->
+        begin
+          if typecheck gamma t ty then
+            t
+          else
+            goal
+        end
+      | _ -> goal
+    ) in run_replace term replace_goal
 ;;
 
 let interactive_step (term:lambdaterm) : lambdaterm option = 
@@ -91,7 +100,12 @@ let interactive_step (term:lambdaterm) : lambdaterm option =
 
   match mygoals with
     (*TODO : handle the end*)
-    | [] -> print_endline "No goals remaining."; None
+    | [] -> 
+      print_newline ();
+      print_endline "No goals remaining.";
+      print_endline "Witness of the proof :";
+      print_endline (show_lambdaterm term);
+      None
     | _ -> (
       let mygoal = List.hd mygoals in (*TODO : filter for goal 0*)
       affiche_goal mygoal;

@@ -23,6 +23,7 @@ type context =
 type tactic = 
   | Intro of string
   | Trivial
+  | Exact of lambdaterm
   (*| Exact of lambdaterm*)
 [@@deriving show]
 ;;
@@ -118,4 +119,7 @@ let rec reduce term : lambdaterm =
     | None -> term
 ;;
 
-(*typecheck : gam -> lam -> ty -> bool*)
+let typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : bool =
+  (*TODO : this*)
+  true
+;;
