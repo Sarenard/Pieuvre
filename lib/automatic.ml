@@ -19,7 +19,7 @@ let check_theorem (gamma : context) (theorem : lambdaterm) (proof : tactic list)
     | goal :: _ -> (
       let tactic = List.hd !tactics in
       tactics := List.tl !tactics;
-      let newterm = handle_tactic goal empty_env myterm tactic in
+      let newterm = handle_tactic goal gamma myterm tactic in
       term := newterm;
     );
   done;

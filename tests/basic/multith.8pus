@@ -1,0 +1,9 @@
+Theorem easyimpl : A -> A.
+Proof.
+    intro x.
+    exact (fun (x:A) => x) x.
+Qed.
+Theorem easyimpl2 : A -> A.
+Proof.
+    apply easyimpl.
+Qed.

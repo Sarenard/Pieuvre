@@ -1,0 +1,9 @@
+Theorem easyimpl : (A -> B) -> (B -> C) -> A -> C.
+Proof.
+    intro f1.
+    intro f2.
+    intro x.
+    apply f2.
+    apply f1.
+    exact x.
+Qed.

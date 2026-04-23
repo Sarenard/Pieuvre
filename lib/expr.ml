@@ -52,12 +52,15 @@ type statement =
 let rec affiche_lam = function
   | Var(x) -> print_string x
   | Type -> print_string "Type"
+  (*TODO : show only when nessessary*)
   | Pi(x, a, b) ->
     if x = "_" then
       (
+        print_string "(";
         affiche_lam a;
         print_string " -> ";
         affiche_lam b;
+        print_string ")";
       )
     else
       (
@@ -112,6 +115,7 @@ let alpha term1 term2 =
   in
   alpha_aux [] [] term1 term2
 ;;
+
 
 let rec free_and_bound term bound = match term with
   | Var s -> if List.mem s bound then ([], bound) else ([s], bound)
@@ -199,9 +203,15 @@ let rec reduce term : lambdaterm =
     | None -> term
 ;;
 
+let equiv a b = 
+  alpha (reduce a) (reduce b)
+;;
+
 let empty_env = [
+  ("D", Type);
+  ("C", Type);
+  ("B", Type);
   ("A", Type);
-  ("B", Type)
 ];;
 
 exception Type_error;;
@@ -243,7 +253,7 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
 
 and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
   let type_of_term = infer gamma term in
-  if (alpha (reduce type_of_term) (reduce ty)) then
+  if equiv type_of_term ty then
     ()
   else
     raise Type_error
