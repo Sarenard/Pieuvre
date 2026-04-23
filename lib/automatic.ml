@@ -2,34 +2,26 @@ open Util
 open Tactic
 open Expr
 
-let automatic (lines:string list) : unit = 
-  (*Le premier element de lines est le goal*)
-  let goal = (match parse_type (List.hd lines) with
-    | Goal(_, a) -> a
-    | _ -> failwith "No goal supplied."
-  ) in
-  let term = ref (parse_type (List.hd lines)) in
-  let tactics = ref (List.tl lines) in
-  let finished = ref false in
+let check_theorem (theorem : lambdaterm) (proof : tactic list)
+(*TODO : make a better return type*)
+  : bool (*if the proof is correct, for now*) =
+  let goal = theorem in
+  let term = ref (Goal(0, theorem)) in
+  let tactics = ref proof in
 
-  while !tactics <> [] && not !finished do
+  while !tactics <> [] do
     let myterm = numerote !term in
     let mygoals = get_goals myterm in
-    let mygoal = match mygoals with
-      | [] -> None
-      | goal :: _ -> Some goal
-    in
-    let tactic = List.hd !tactics in
-    tactics := List.tl !tactics;
-    try
-      let (newterm, is_finished) = handle_tactic mygoal myterm (parse_tactic tactic) in
+    match mygoals with
+      | [] -> (
+      failwith "Tactic when no goal remaining"
+    )
+    | goal :: _ -> (
+      let tactic = List.hd !tactics in
+      tactics := List.tl !tactics;
+      let newterm = handle_tactic goal myterm tactic in
       term := newterm;
-      finished := is_finished;
-    with
-    | GoalRemaining ->
-        print_endline "Qed impossible: there are remaining goals."
-    | NoFocusedGoal ->
-        print_endline "No focused goal: only Qed. can be used now."
+    );
   done;
 
   (*We finished*)
@@ -38,13 +30,30 @@ let automatic (lines:string list) : unit =
   (*We show a cool message*)
   print_endline "Witness of the proof :";
   affiche_lam !term; print_newline ();
-  if not !finished then
-    failwith "Proof ended before Qed."
-  else (
-    print_endline "Typechecking...";
-    try 
-      typecheck empty_env (!term) goal;
-      print_endline "Typechecking was a success !!";
-    with Type_error -> failwith "Typechecking failed...";
+  print_endline "Typechecking...";
+  try 
+  typecheck empty_env (!term) goal;
+  print_endline "Typechecking was a success !!";
+  true
+  with Type_error -> (
+    print_endline "Typechecking failed...";
+    print_endline (show_lambdaterm !term);
+    print_endline (show_lambdaterm goal);
+    failwith "Typechecking failed...";
   )
+;;
+
+let automatic (content:string) : unit = 
+  let elements = parse_statements content in
+  print_endline (show_list show_statement elements);
+  let rec handle_statements (statements : statement list) =
+    match statements with
+    | Theorem(_name, ty)::Proof(proof)::xs -> (
+      let ok = check_theorem ty proof in ();
+      handle_statements xs;
+    )
+    | Theorem(_, _)::[] -> failwith "Theorem without proof attached"
+    | Proof(_)::[] -> failwith "Proof without theorem attached"
+    | [] -> ()
+  in handle_statements elements;
 ;;

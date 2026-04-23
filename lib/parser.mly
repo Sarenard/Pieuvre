@@ -6,6 +6,7 @@ open Expr
 %token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL
 /*TACTICS*/
 %token INTRO TRIVIAL EXACT DOT QED
+%token THEOREM PROOF
 %token <int> INT       /* le lexème INT a un attribut entier */
 %token <string> VAR
 %token <string> TYPE
@@ -14,18 +15,25 @@ open Expr
 /* priorité plus grande sur une ligne située plus bas */
 %right SMALLARROW
 
-/* PARTIE 4, le point d'entrée ******************************************* */
-%start main
-%type <Expr.lambdaterm> main
+/* PARTIE 4, les points d'entrée ******************************************* */
+%start lambdaterm
+%type <Expr.lambdaterm> lambdaterm
 
-%start tactic_main
-%type <Expr.tactic> tactic_main
+%start statements
+%type <Expr.statement list> statements
+
+%start tactic_dot
+%type <Expr.tactic> tactic_dot
 
 /* PARTIE 5 : Les Termes ************************************** */                                                         
 %%
 
-main:
-  | e=lambdaterm EOF { e }
+statements:
+  | l = list(statement) EOF { l }
+
+statement: 
+  | THEOREM x=VAR COLON t=lambdaterm DOT {Theorem(x, t)}
+  | PROOF DOT l=list(tactic_dot) QED DOT {Proof(l)}
 
 lambdaterm:
   | FUN LPAREN x=VAR COLON t=term RPAREN BIGARROW e=lambdaterm {Func(x, t, e)}
@@ -41,17 +49,16 @@ term:
   | t1 = term SMALLARROW t2 = term {Pi("_", t1, t2)} 
   (*Termes*)
   | t = VAR {Var t}
-  | GOAL LPAREN t = term RPAREN DOT {Goal(0, t)}
+  | GOAL LPAREN t = term RPAREN {Goal(0, t)}
   | LPAREN t=lambdaterm RPAREN {t}
   (*Var*)
 
 /* PARTIE 6 : Les tactiques ************************************** */                                                         
 
-tactic_main:
-  | t=tactic DOT EOF { t }
+tactic_dot:
+  | t=tactic DOT { t }
 
 tactic:
   | INTRO x=VAR { Intro x }
   | TRIVIAL { Trivial }
-  | QED { Qed }
   | EXACT t=lambdaterm { Exact(t) }

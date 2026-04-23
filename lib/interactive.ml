@@ -39,21 +39,19 @@ let interactive_step (term:lambdaterm) : lambdaterm option =
 
   print_string "> ";
   let input = read_line () in
-  let lexbuf = Lexing.from_string input in
-  let tactic = Parser.tactic_main Lexer.token lexbuf in
-  print_string "Tactique : ";
-  print_string (show_tactic tactic);
-  print_newline ();
-  try
-    let (return_term, finished) = handle_tactic mygoal term tactic in
-    if finished then None else Some(return_term)
-  with
-  | GoalRemaining ->
-      print_endline "Qed impossible: there are remaining goals.";
-      Some term
-  | NoFocusedGoal ->
-      print_endline "No focused goal: only Qed. can be used now.";
-      Some term
+  match mygoal with
+  | Some(goal) -> (
+    let lexbuf = Lexing.from_string input in
+    let tactic = Parser.tactic_dot Lexer.token lexbuf in
+    print_string "Tactique : ";
+    print_string (show_tactic tactic);
+    print_newline ();
+    let return_term = handle_tactic goal term tactic in
+    if get_goals return_term = [] then None else Some(return_term)
+  )
+  | None -> (
+      if input = "Qed." then None else Some(term)
+  )
 ;;
 
 let interactive (term:lambdaterm) : unit = 

@@ -1,7 +1,8 @@
 open Expr
 
-let parse_type (ty:string) : lambdaterm = Parser.main Lexer.token (Lexing.from_string ty);; 
-let parse_tactic (ty:string) : tactic = Parser.tactic_main Lexer.token (Lexing.from_string ty);; 
+let parse_type (ty:string) : lambdaterm = Parser.lambdaterm Lexer.token (Lexing.from_string ty);; 
+let parse_tactic (ty:string) : tactic = Parser.tactic_dot Lexer.token (Lexing.from_string ty);; 
+let parse_statements (ty:string) : statement list = Parser.statements Lexer.token (Lexing.from_string ty);; 
 
 let get_goals (term:lambdaterm) =
   let rec get_goals_aux (gamma:context) (term:lambdaterm) : (int * context * lambdaterm) list = 
@@ -40,5 +41,10 @@ let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambda
   | Pi (x, a, b) -> Pi (x, run_replace a func, b)
   | Func (x, a, b) -> Func (x, run_replace a func, run_replace b func)
   | App (a, b) -> App (run_replace a func, run_replace b func)
+;;
+
+let show_list show xs =
+  let contents = List.map show xs |> String.concat "; " in
+  "[" ^ contents ^ "]"
 ;;
 

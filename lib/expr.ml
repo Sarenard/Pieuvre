@@ -23,9 +23,14 @@ type context =
 type tactic = 
   | Intro of string
   | Trivial
-  | Qed
   | Exact of lambdaterm
   (*| Exact of lambdaterm*)
+[@@deriving show]
+;;
+
+type statement =
+  | Theorem of string * lambdaterm (*th <name> : Goal(...)*)
+  | Proof of tactic list
 [@@deriving show]
 ;;
 

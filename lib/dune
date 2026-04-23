@@ -1,6 +1,6 @@
 (library
  (name lib)
- (flags (:standard -w +A-4-21-27-26-39-70))
+ (flags (:standard -warn-error -A))
  (preprocess (pps ppx_deriving.show))
 )
 

@@ -20,6 +20,9 @@ rule token = parse
   | "=>"             { BIGARROW }
   | "->"             { SMALLARROW }
 
+  | "Theorem" {THEOREM}
+  | "Proof" {PROOF}
+
   | "."             { DOT }
   | "Goal"             { GOAL }
   | "intro"             { INTRO }

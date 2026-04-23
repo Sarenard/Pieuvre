@@ -1,4 +1,5 @@
-Goal(A -> A).
-intro x.
-exact (fun (x:A) => x) x.
+Theorem easyimpl : A -> A.
+Proof.
+    intro x.
+    exact (fun (x:A) => x) x.
 Qed.

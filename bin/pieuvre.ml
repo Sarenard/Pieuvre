@@ -20,15 +20,15 @@ let run () =
       (*interactive*)
       try
         let lexbuf = Lexing.from_channel stdin in
-        let parse () = Parser.main Lexer.token lexbuf in
+        let parse () = Parser.lambdaterm Lexer.token lexbuf in
         interactive (parse ());
       with e -> (
         Printf.printf "Asteriiiiiiiiiiiiiiix\n"; raise e
       )
     )
     | filename -> 
-      let lines = In_channel.with_open_text filename In_channel.input_lines in 
-      automatic lines;
+      let content = In_channel.with_open_text filename In_channel.input_all in 
+      automatic content;
   ;
 ;;
 

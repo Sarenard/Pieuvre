@@ -1,27 +1,14 @@
 open Expr
 open Util
 
-exception GoalRemaining;;
-exception NoFocusedGoal;;
-
-let handle_tactic goal term tactic 
-  : (lambdaterm*bool) = (* (terme de retour, témoin de si on a fini) *) 
+let handle_tactic (i, gamma, _locgoal) term tactic : lambdaterm =  
   match tactic with
-  | Qed -> 
-      if get_goals term = [] then
-        (term, true)
-      else
-        raise GoalRemaining
-  | _ when goal = None ->
-      raise NoFocusedGoal
   | Intro(x) ->
-    let (i, _gamma, _locgoal) = Option.get goal in
     let replace_goal goal = (match goal with
       | Goal(k, Pi("_", a, b)) when k=i -> Func(x, a, Goal(k, b))
       | _ -> goal
-    ) in (run_replace term replace_goal, false)
+    ) in run_replace term replace_goal
   | Trivial ->
-    let (i, gamma, _locgoal) = Option.get goal in
     let replace_goal goal = (match goal with
       | Goal(k, ty) when i=k -> 
         begin
@@ -32,9 +19,8 @@ let handle_tactic goal term tactic
               goal
         end
       | _ -> goal
-    ) in (run_replace term replace_goal, false)
+    ) in run_replace term replace_goal
   | Exact(t) ->
-    let (i, gamma, _locgoal) = Option.get goal in
     let replace_goal goal = (match goal with
       | Goal(k, ty) when k=i ->
         begin
@@ -44,5 +30,5 @@ let handle_tactic goal term tactic
           with Type_error -> goal
         end
       | _ -> goal
-    ) in (run_replace term replace_goal, false)
+    ) in run_replace term replace_goal
 ;;
