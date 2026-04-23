@@ -3,10 +3,11 @@ open Expr
 %}
 
 /* PARTIE 2, on liste les lexèmes (lien avec le fichier lexer.mll) ******* */                                   
-%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL
+%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE
 /*TACTICS*/
 %token INTRO TRIVIAL EXACT DOT QED
-%token THEOREM PROOF
+/*STATEMENTS*/
+%token THEOREM PROOF INDUCTIVE DEFINE
 %token <int> INT       /* le lexème INT a un attribut entier */
 %token <string> VAR
 %token <string> TYPE
@@ -25,15 +26,31 @@ open Expr
 %start tactic_dot
 %type <Expr.tactic> tactic_dot
 
-/* PARTIE 5 : Les Termes ************************************** */                                                         
+/* PARTIE 5 : STATEMENTS ************************************** */                                                         
 %%
 
 statements:
   | l = list(statement) EOF { l }
 
+
 statement: 
-  | THEOREM x=VAR COLON t=lambdaterm DOT {Theorem(x, t)}
+  | THEOREM name=VAR COLON t=lambdaterm DOT {Theorem(name, t)}
   | PROOF DOT l=list(tactic_dot) QED DOT {Proof(l)}
+  (*
+  Inductive statements are of the form
+  Inductive name : arity :=
+    [
+      | name : pos_type
+    ]
+  .
+  by https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf
+  *)
+  | INDUCTIVE name=VAR COLON arity=lambdaterm DEFINE cons=list(constructor) DOT {Inductive(name, arity, cons)}
+
+constructor:
+  | PIPE name=VAR COLON ty=lambdaterm {Constructor(name, ty)} 
+
+/* PARTIE 6 : TERMS ************************************** */                                                         
 
 lambdaterm:
   | FUN LPAREN x=VAR COLON t=term RPAREN BIGARROW e=lambdaterm {Func(x, t, e)}
@@ -53,7 +70,7 @@ term:
   | LPAREN t=lambdaterm RPAREN {t}
   (*Var*)
 
-/* PARTIE 6 : Les tactiques ************************************** */                                                         
+/* PARTIE 7 : TACTICS ************************************** */                                                         
 
 tactic_dot:
   | t=tactic DOT { t }

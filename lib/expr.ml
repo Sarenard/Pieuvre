@@ -28,9 +28,23 @@ type tactic =
 [@@deriving show]
 ;;
 
+type constructor =
+  (*<name> : <pos_type>*)
+  | Constructor of string * lambdaterm
+[@@deriving show]
+;;
+
 type statement =
-  | Theorem of string * lambdaterm (*th <name> : Goal(...)*)
+  (*th <name> : Goal(...)*)
+  | Theorem of string * lambdaterm
   | Proof of tactic list
+  (*
+  Inductive <name> : <arity> :=
+  <[
+    constructor
+  ]>
+  *)
+  | Inductive of string * lambdaterm * constructor list
 [@@deriving show]
 ;;
 
@@ -100,7 +114,7 @@ let alpha term1 term2 =
 
 let rec free_and_bound term bound = match term with
   | Var s -> if List.mem s bound then ([], bound) else ([s], bound)
-  | Func(s, ty, body) -> free_and_bound body (s::bound)
+  | Func(s, _ty, body) -> free_and_bound body (s::bound)
   | App(t1, t2) ->
     let (f1, b1) = free_and_bound t1 bound in
     let (f2, b2) = free_and_bound t2 bound in
@@ -167,7 +181,7 @@ let rec betastep term : lambdaterm option =
     | Some t -> Some (Func(v, ty, t)) 
     | None -> None
     )
-  | App(Func(v, ty, body), t) -> Some (replace body v t)
+  | App(Func(v, _ty, body), t) -> Some (replace body v t)
   | App(f, t) -> (match (betastep f) with
     | Some f' -> Some (App(f', t))
     | None -> (match betastep t with
@@ -207,7 +221,7 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   )
   (*This will cause problems but for now it is totally fine : we ignore universes*)
   | Type -> Type
-  | Goal(_, a) -> raise Unexpected_goal;
+  | Goal(_, _a) -> raise Unexpected_goal;
   | Pi(x, a, b) -> 
     check_is_type gamma a;
     check_is_type ((x, a)::gamma) b;

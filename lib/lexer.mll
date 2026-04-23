@@ -19,9 +19,12 @@ rule token = parse
   | ')'             { RPAREN }
   | "=>"             { BIGARROW }
   | "->"             { SMALLARROW }
+  | ":=" {DEFINE}
+  | "|" {PIPE}
 
   | "Theorem" {THEOREM}
   | "Proof" {PROOF}
+  | "Inductive" {INDUCTIVE}
 
   | "."             { DOT }
   | "Goal"             { GOAL }

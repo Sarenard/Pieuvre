@@ -8,7 +8,7 @@ let get_goals (term:lambdaterm) =
   let rec get_goals_aux (gamma:context) (term:lambdaterm) : (int * context * lambdaterm) list = 
     (
       match term with
-      | Var(x) -> []
+      | Var(_x) -> []
       | Type -> []
       | Pi(x, a, b) -> (get_goals_aux gamma a)@(get_goals_aux ((x, a)::gamma) b) 
       | Func(x, a, b) -> get_goals_aux ((x, a)::gamma) b
@@ -37,7 +37,7 @@ let numerote (term:lambdaterm) : lambdaterm =
 let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambdaterm =
   match term with
   | Var _ | Type -> term
-  | Goal (i, a) -> func term
+  | Goal (_i, _a) -> func term
   | Pi (x, a, b) -> Pi (x, run_replace a func, b)
   | Func (x, a, b) -> Func (x, run_replace a func, run_replace b func)
   | App (a, b) -> App (run_replace a func, run_replace b func)
@@ -47,4 +47,3 @@ let show_list show xs =
   let contents = List.map show xs |> String.concat "; " in
   "[" ^ contents ^ "]"
 ;;
-

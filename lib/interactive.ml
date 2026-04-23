@@ -12,7 +12,7 @@ let affiche_context (gamma:context) : unit =
     (List.rev gamma)
 ;;
 
-let affiche_goal (i, gamma, ty) : unit =
+let affiche_goal (_i, gamma, ty) : unit =
   print_newline ();
   print_string "Goal :";
   print_newline ();
