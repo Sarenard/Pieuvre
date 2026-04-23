@@ -2,7 +2,7 @@ open Util
 open Tactic
 open Expr
 
-let check_theorem (theorem : lambdaterm) (proof : tactic list)
+let check_theorem (gamma : context) (theorem : lambdaterm) (proof : tactic list)
 (*TODO : make a better return type*)
   : bool (*if the proof is correct, for now*) =
   let goal = theorem in
@@ -19,7 +19,7 @@ let check_theorem (theorem : lambdaterm) (proof : tactic list)
     | goal :: _ -> (
       let tactic = List.hd !tactics in
       tactics := List.tl !tactics;
-      let newterm = handle_tactic goal myterm tactic in
+      let newterm = handle_tactic goal empty_env myterm tactic in
       term := newterm;
     );
   done;
@@ -36,7 +36,7 @@ let check_theorem (theorem : lambdaterm) (proof : tactic list)
   );
 
   try 
-    typecheck empty_env (!term) goal;
+    typecheck gamma (!term) goal;
     if debug then (
       print_endline "Typechecking was a success !!";
     );
@@ -54,15 +54,18 @@ let check_theorem (theorem : lambdaterm) (proof : tactic list)
 let automatic (content:string) : unit = 
   let elements = parse_statements content in
   print_endline (show_list show_statement elements);
-  let rec handle_statements (statements : statement list) =
+  
+  let rec handle_statements (gamma:context) (statements : statement list) =
     match statements with
     | Theorem(name, ty)::Proof(proof)::xs -> (
-      let ok = check_theorem ty proof in 
+      let ok = check_theorem gamma ty proof in 
       if not ok then failwith ("Proof of theorem " ^ name ^ " is incorrect !");
-      handle_statements xs;
+      handle_statements ((name, ty)::gamma) xs;
     )
+
     | Theorem(_, _)::_ -> failwith "Theorem without proof attached"
     | Proof(_)::_ -> failwith "Proof without theorem attached"
     | [] -> ()
-  in handle_statements elements;
+
+  in handle_statements empty_env elements;
 ;;

@@ -46,7 +46,7 @@ let interactive_step (term:lambdaterm) : lambdaterm option =
     print_string "Tactique : ";
     print_string (show_tactic tactic);
     print_newline ();
-    let return_term = handle_tactic goal term tactic in
+    let return_term = handle_tactic goal empty_env term tactic in
     if get_goals return_term = [] then None else Some(return_term)
   )
   | None -> (

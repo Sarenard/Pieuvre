@@ -1,7 +1,12 @@
 open Expr
 open Util
 
-let handle_tactic (i, gamma, _locgoal) term tactic : lambdaterm =  
+(*
+gamma : context of the goal
+gamma' : context of the theorem
+*)
+let handle_tactic (i, gamma, _locgoal) (gamma':context) term tactic : lambdaterm =  
+  let big_gamma = (gamma@gamma') in
   match tactic with
   (*TODO : intro should fail if x already in the context*)
   | Intro(x) ->
@@ -13,7 +18,7 @@ let handle_tactic (i, gamma, _locgoal) term tactic : lambdaterm =
     let replace_goal goal = (match goal with
       | Goal(k, ty) when i=k -> 
         begin
-          match List.find_opt (fun (_y, ty') -> alpha ty' ty) gamma with
+          match List.find_opt (fun (_y, ty') -> alpha ty' ty) big_gamma with
           | Some (y, _ty') ->
               Var y
           | None ->
@@ -26,7 +31,7 @@ let handle_tactic (i, gamma, _locgoal) term tactic : lambdaterm =
       | Goal(k, ty) when k=i ->
         begin
           try 
-            typecheck gamma t ty;
+            typecheck big_gamma t ty;
             t
           with Type_error -> goal
         end
