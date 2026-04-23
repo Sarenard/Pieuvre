@@ -69,7 +69,7 @@ let handle_tactic (i, gamma, _locgoal) term tactic =
     ) in run_replace term replace_goal
   | Trivial ->
     let replace_goal goal = (match goal with
-      | Goal(k, ty) when k=i -> 
+      | Goal(k, ty) when i=k -> 
         begin
           match List.find_opt (fun (_y, ty') -> alpha ty' ty) gamma with
           | Some (y, _ty') ->

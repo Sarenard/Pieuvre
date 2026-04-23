@@ -10,7 +10,7 @@ type lambdaterm =
   
   (*functions*)
   | Pi of string * lambdaterm * lambdaterm
-  | Func of string * lambdaterm * lambdaterm
+  | Func of string * lambdaterm * lambdaterm (* nom arg, type arg, contenu*)
   | App of lambdaterm * lambdaterm
 [@@deriving show]
 ;;
@@ -108,8 +108,83 @@ let alpha term1 term2 =
   alpha_aux [] [] term1 term2
 ;;
 
-let betastep term : lambdaterm option =
-  None
+let rec free_and_bound term bound = match term with
+  | Var s -> if List.mem s bound then ([], bound) else ([s], bound)
+  | Func(s, ty, body) -> free_and_bound body (s::bound)
+  | App(t1, t2) ->
+    let (f1, b1) = free_and_bound t1 bound in
+    let (f2, b2) = free_and_bound t2 bound in
+    (f1 @ f2, b1 @ b2)
+  | _ -> ([], [])
+
+let get_fresh v lst =
+  let len = String.length v in
+  (* Find the index where digits start *)
+  let rec find_digit_start i =
+    if i >= len then len
+    else
+      match v.[i] with
+      | '0' .. '9' -> i
+      | _ -> find_digit_start (i + 1)
+  in
+  let i = find_digit_start 0 in
+  let prefix = String.sub v 0 i in
+  let number =
+    if i = len then 0
+    else int_of_string (String.sub v i (len - i))
+  in
+  let rec find n =
+    let candidate = prefix ^ string_of_int n in
+    if List.mem candidate lst then find (n + 1)
+    else candidate
+  in find number
+
+let rec replace term x x' = match term with
+  | Var s -> if s = x then x' else Var s
+  | Func(s, ty, body) -> 
+    if s = x then term
+    else (
+      let x'free, _ = free_and_bound term [] in
+      if List.mem s x'free then ( 
+        let bfree, bbound = free_and_bound body [] in
+        let spoiled = x'free @ bfree @ bbound in
+        let fresh = get_fresh s spoiled in
+        Func(fresh, ty, replace (replace body s (Var fresh)) x x')
+      ) else Func(s, ty, replace body x x')
+    )
+  | Pi(s, ty, body) -> 
+    if s = x then term
+    else (
+      let x'free, _ = free_and_bound term [] in
+      if List.mem s x'free then ( 
+        let bfree, bbound = free_and_bound body [] in
+        let spoiled = x'free @ bfree @ bbound in
+        let fresh = get_fresh s spoiled in
+        Pi(fresh, ty, replace (replace body s (Var fresh)) x x')
+      ) else Pi(s, ty, replace body x x')
+    )
+  | App(t1, t2) -> App(replace t1 x x', replace t2 x x')
+  | Type -> Type
+  | Goal(i, tm) -> Goal(i, replace tm x x')
+
+let rec betastep term : lambdaterm option =
+  match term with
+  | Var _ -> None
+  | Type -> None
+  | Goal(_, _) -> None
+  | Pi(_, _, _) -> None
+  | Func(v, ty, body) -> (match (betastep body) with
+    | Some t -> Some (Func(v, ty, t)) 
+    | None -> None
+    )
+  | App(Func(v, ty, body), t) -> Some (replace body v t)
+  | App(f, t) -> (match (betastep f) with
+    | Some f' -> Some (App(f', t))
+    | None -> (match betastep t with
+      | Some t' -> Some (App(f, t'))
+      | None -> None
+    )
+  )
 ;;
 
 let rec reduce term : lambdaterm =
