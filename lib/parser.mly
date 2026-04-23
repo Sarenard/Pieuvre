@@ -12,7 +12,7 @@ open Expr
 
 /* PARTIE 3, on donne les associativités et on classe les priorités *********** */
 /* priorité plus grande sur une ligne située plus bas */
-%left SMALLARROW
+%right SMALLARROW
 
 /* PARTIE 4, le point d'entrée ******************************************* */
 %start main
@@ -48,7 +48,7 @@ term:
 /* PARTIE 6 : Les tactiques ************************************** */                                                         
 
 tactic_main:
-  | t=tactic DOT { t }
+  | t=tactic DOT EOF { t }
 
 tactic:
   | INTRO x=VAR { Intro x }

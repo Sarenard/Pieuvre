@@ -113,7 +113,7 @@ let interactive_step (term:lambdaterm) : lambdaterm option =
   let mygoal = match mygoals with
   | [] ->
       print_newline ();
-      print_endline "No goals. Type Qed. to finish.";
+      print_endline "No goals remaining !. Type Qed. to finish.";
       None
   | mygoal :: _ ->
       affiche_goal mygoal;
