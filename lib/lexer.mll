@@ -1,7 +1,6 @@
 {
   (* prélude du fichier *)
   open Parser
-          
 }
 
 (* définitions d'expressions régulières *)
@@ -32,6 +31,7 @@ rule token = parse
   | "intro"             { INTRO }
   | "trivial"             { TRIVIAL }
   | "exact"             { EXACT }
+  | "apply"             { APPLY }
   | "Qed"             { QED }
 
   | var as s { VAR s }

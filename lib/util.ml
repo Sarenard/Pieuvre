@@ -1,8 +1,8 @@
 open Expr
 
-let parse_type (ty:string) : lambdaterm = Parser.lambdaterm Lexer.token (Lexing.from_string ty);; 
-let parse_tactic (ty:string) : tactic = Parser.tactic_dot Lexer.token (Lexing.from_string ty);; 
-let parse_statements (ty:string) : statement list = Parser.statements Lexer.token (Lexing.from_string ty);; 
+let parse_type (ty:string) : lambdaterm = Parser.main_term Lexer.token (Lexing.from_string ty);; 
+let parse_tactic (ty:string) : tactic = Parser.main_tactic Lexer.token (Lexing.from_string ty);; 
+let parse_statements (ty:string) : statement list = Parser.main_statements Lexer.token (Lexing.from_string ty);; 
 
 let get_goals (term:lambdaterm) =
   let rec get_goals_aux (gamma:context) (term:lambdaterm) : (int * context * lambdaterm) list = 

@@ -24,6 +24,7 @@ type tactic =
   | Intro of string
   | Trivial
   | Exact of lambdaterm
+  | Apply of string
   (*| Exact of lambdaterm*)
 [@@deriving show]
 ;;

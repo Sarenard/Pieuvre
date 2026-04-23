@@ -62,6 +62,7 @@ let automatic (content:string) : unit =
       if not ok then failwith ("Proof of theorem " ^ name ^ " is incorrect !");
       handle_statements ((name, ty)::gamma) xs;
     )
+    
     | Inductive(_, _, _)::_ -> failwith "Inductive definitions are not supported yet"
 
     | Theorem(_, _)::_ -> failwith "Theorem without proof attached"

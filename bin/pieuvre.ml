@@ -18,13 +18,7 @@ let run () =
   match !nom_fichier with
     | "" -> (
       (*interactive*)
-      try
-        let lexbuf = Lexing.from_channel stdin in
-        let parse () = Parser.lambdaterm Lexer.token lexbuf in
-        interactive (parse ());
-      with e -> (
-        Printf.printf "Asteriiiiiiiiiiiiiiix\n"; raise e
-      )
+      interactive ();
     )
     | filename -> 
       let content = In_channel.with_open_text filename In_channel.input_all in 

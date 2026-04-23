@@ -23,7 +23,8 @@ let affiche_goal (_i, gamma, ty) : unit =
   print_newline ()
 ;;
 
-let interactive_step (term:lambdaterm) : lambdaterm option = 
+let interactive_step (term:lambdaterm) 
+: (lambdaterm * bool) (*(term, should we continue)*) = 
   let term = numerote term in
   let mygoals = get_goals term in
 
@@ -42,32 +43,32 @@ let interactive_step (term:lambdaterm) : lambdaterm option =
   match mygoal with
   | Some(goal) -> (
     let lexbuf = Lexing.from_string input in
-    let tactic = Parser.tactic_dot Lexer.token lexbuf in
+    let tactic = Parser.main_tactic Lexer.token lexbuf in
     print_string "Tactique : ";
     print_string (show_tactic tactic);
     print_newline ();
     let return_term = handle_tactic goal empty_env term tactic in
-    if get_goals return_term = [] then None else Some(return_term)
+    (return_term, (get_goals return_term <> []))
   )
   | None -> (
-      if input = "Qed." then None else Some(term)
+      (term, input <> "Qed.")
   )
 ;;
 
-let interactive (term:lambdaterm) : unit = 
-  let goal = (match term with
-    | Goal(_, a) -> a
-    | _ -> failwith "No goal supplied."
-  ) in
+let interactive () : unit = 
+  print_string "Goal : ";
+  let input = read_line () in
+  let lexbuf = Lexing.from_string input in
+  let parse () = Parser.main_term Lexer.token lexbuf in
+  let goal = parse () in
+  let term = Goal(0, goal) in
   let current = ref term in
   let continue = ref true in
 
   while !continue do
-    match interactive_step !current with
-    | Some new_term ->
-        current := new_term
-    | None ->
-        continue := false
+    let term, cont = interactive_step !current in
+    current := term;
+    continue := cont;
   done;
 
   (*We finished*)
@@ -78,6 +79,7 @@ let interactive (term:lambdaterm) : unit =
   print_endline "No goals remaining.";
   print_endline "Witness of the proof :";
   affiche_lam !current; print_newline ();
+  affiche_lam goal; print_newline ();
   print_endline "Typechecking...";
   try 
     typecheck empty_env (!current) goal;
