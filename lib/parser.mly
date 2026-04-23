@@ -3,14 +3,13 @@ open Expr
 %}
 
 /* PARTIE 2, on liste les lexèmes (lien avec le fichier lexer.mll) ******* */                                   
-%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE
+%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE
 /*TACTICS*/
 %token INTRO TRIVIAL EXACT DOT QED
 /*STATEMENTS*/
 %token THEOREM PROOF INDUCTIVE DEFINE
 %token <int> INT       /* le lexème INT a un attribut entier */
 %token <string> VAR
-%token <string> TYPE
 
 /* PARTIE 3, on donne les associativités et on classe les priorités *********** */
 /* priorité plus grande sur une ligne située plus bas */
@@ -62,7 +61,7 @@ applic:
 
 term:
   (*Types*)
-  | t = TYPE {Var t}
+  | TYPE {Type}
   | t1 = term SMALLARROW t2 = term {Pi("_", t1, t2)} 
   (*Termes*)
   | t = VAR {Var t}

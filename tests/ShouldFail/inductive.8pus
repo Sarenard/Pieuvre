@@ -1,0 +1,4 @@
+Inductive nat : Type :=
+    | Zero : nat
+    | Succ : nat -> nat
+.

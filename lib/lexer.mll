@@ -7,8 +7,7 @@
 (* définitions d'expressions régulières *)
 let chiffre = ['0'-'9']
 let nombre = chiffre+
-let var = ['a'-'z']['a'-'z']*['0'-'9']*
-let type = ['A'-'Z']['A'-'Z']*['0'-'9']*
+let var = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']*
                
 rule token = parse
   | [' ' '\n' '\t']     { token lexbuf }
@@ -21,6 +20,8 @@ rule token = parse
   | "->"             { SMALLARROW }
   | ":=" {DEFINE}
   | "|" {PIPE}
+  
+  | "Type" {TYPE}
 
   | "Theorem" {THEOREM}
   | "Proof" {PROOF}
@@ -34,6 +35,5 @@ rule token = parse
   | "Qed"             { QED }
 
   | var as s { VAR s }
-  | type as s { TYPE s }
   
   | eof               { EOF }
