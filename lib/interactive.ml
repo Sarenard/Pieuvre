@@ -57,6 +57,10 @@ let interactive_step (term:lambdaterm) : lambdaterm option =
 ;;
 
 let interactive (term:lambdaterm) : unit = 
+  let goal = (match term with
+    | Goal(_, a) -> a
+    | _ -> failwith "No goal supplied."
+  ) in
   let current = ref term in
   let continue = ref true in
 
@@ -78,7 +82,7 @@ let interactive (term:lambdaterm) : unit =
   affiche_lam !current; print_newline ();
   print_endline "Typechecking...";
   try 
-    typecheck [] (!current) (infer [] term);
+    typecheck empty_env (!current) goal;
     print_endline "Typechecking was a success !!";
   with Type_error -> print_endline "There is an error somewhere...";
 ;;

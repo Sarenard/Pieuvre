@@ -4,7 +4,10 @@ open Expr
 
 let automatic (lines:string list) : unit = 
   (*Le premier element de lines est le goal*)
-  let goal = parse_type (List.hd lines) in
+  let goal = (match parse_type (List.hd lines) with
+    | Goal(_, a) -> a
+    | _ -> failwith "No goal supplied."
+  ) in
   let term = ref (parse_type (List.hd lines)) in
   let tactics = ref (List.tl lines) in
   let finished = ref false in
@@ -36,12 +39,12 @@ let automatic (lines:string list) : unit =
   print_endline "Witness of the proof :";
   affiche_lam !term; print_newline ();
   if not !finished then
-    print_endline "Proof ended before Qed."
+    failwith "Proof ended before Qed."
   else (
     print_endline "Typechecking...";
     try 
-      typecheck [] (!term) (infer [] goal);
+      typecheck empty_env (!term) goal;
       print_endline "Typechecking was a success !!";
-    with Type_error -> print_endline "There is an error somewhere...";
+    with Type_error -> failwith "Typechecking failed...";
   )
 ;;

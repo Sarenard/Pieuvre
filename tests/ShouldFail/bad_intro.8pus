@@ -1,0 +1,4 @@
+Goal(A -> A).
+intro x.
+intro y.
+Qed.

@@ -180,25 +180,41 @@ let rec reduce term : lambdaterm =
 ;;
 
 let empty_env = [
-  ("A", Type)
+  ("A", Type);
+  ("B", Type)
 ];;
 
 exception Type_error;;
+exception Unexpected_goal;;
 exception Unbound_variable of string;;
 
-let rec infer (gamma:context) (term:lambdaterm) : lambdaterm =
+(*we will need to change that with universes*)
+let rec check_is_type gamma ty =
+  match reduce (infer gamma ty) with
+  | Type -> ()
+  | _ -> raise Type_error
+
+and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   match term with
   | Var(x) -> (
     try List.assoc x gamma
     with Not_found -> raise (Unbound_variable x) 
   )
+  (*This will cause problems but for now it is totally fine : we ignore universes*)
   | Type -> Type
-  | Goal(_, a) -> a
+  | Goal(_, a) -> raise Unexpected_goal;
   (*TODO : more checks here ?*)
-  | Pi(_, _, _) -> Type 
+  | Pi(x, a, b) -> 
+    typecheck gamma a Type;
+    typecheck ((x, a)::gamma) b Type;
+    Type 
   (*TODO : more checks here ? (ty is Type ?)*)
   | Func(v, ty, body) -> 
-    Pi(v, ty, infer ((v, ty)::gamma) body)
+    typecheck gamma ty Type;
+    let new_context = ((v, ty)::gamma) in
+    let body_type = infer new_context body in
+    typecheck new_context body_type Type;
+    Pi(v, ty, body_type)
   | App(f, t) -> (
     match reduce (infer gamma f) with
     | Pi(x, a, b) -> 
@@ -208,6 +224,7 @@ let rec infer (gamma:context) (term:lambdaterm) : lambdaterm =
   )
 
 and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
+  check_is_type gamma ty;
   let type_of_term = infer gamma term in
   if (alpha (reduce type_of_term) (reduce ty)) then
     ()

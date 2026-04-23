@@ -14,7 +14,7 @@ let get_goals (term:lambdaterm) =
       | App(a, b) -> (get_goals_aux gamma a)@(get_goals_aux gamma b)
       | Goal(i, a) -> [(i, gamma, a)]
     ) in
-  get_goals_aux [] term
+  get_goals_aux empty_env term
 ;;
 
 let numerote (term:lambdaterm) : lambdaterm =
