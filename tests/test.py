@@ -49,6 +49,7 @@ cprint("Building Project", "green")
 try:
     caml_result = subprocess.run(
         ["dune", "build"],
+        check=True
     )
 except subprocess.CalledProcessError as e:
     cprint("Error building project", "red")

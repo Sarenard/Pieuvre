@@ -9,7 +9,7 @@ let get_goals (term:lambdaterm) =
       match term with
       | Var(x) -> []
       | Type -> []
-      | Pi(x, a, b) -> [] (*type only*)
+      | Pi(x, a, b) -> (get_goals_aux gamma a)@(get_goals_aux ((x, a)::gamma) b) 
       | Func(x, a, b) -> get_goals_aux ((x, a)::gamma) b
       | App(a, b) -> (get_goals_aux gamma a)@(get_goals_aux gamma b)
       | Goal(i, a) -> [(i, gamma, a)]
@@ -26,8 +26,8 @@ let numerote (term:lambdaterm) : lambdaterm =
         let i = !next in
         incr next;
         Goal (i, a)
-    | Pi (x, a, b) -> Pi (x, a, b)
-    | Func (x, a, b) -> Func (x, a, dfs b)
+    | Pi (x, a, b) -> Pi (x, dfs a, dfs b)
+    | Func (x, a, b) -> Func (x, dfs a, dfs b)
     | App (a, b) -> App (dfs a, dfs b)
   in
   dfs term

@@ -203,17 +203,15 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   (*This will cause problems but for now it is totally fine : we ignore universes*)
   | Type -> Type
   | Goal(_, a) -> raise Unexpected_goal;
-  (*TODO : more checks here ?*)
   | Pi(x, a, b) -> 
-    typecheck gamma a Type;
-    typecheck ((x, a)::gamma) b Type;
+    check_is_type gamma a;
+    check_is_type ((x, a)::gamma) b;
     Type 
-  (*TODO : more checks here ? (ty is Type ?)*)
   | Func(v, ty, body) -> 
-    typecheck gamma ty Type;
+    check_is_type gamma ty;
     let new_context = ((v, ty)::gamma) in
     let body_type = infer new_context body in
-    typecheck new_context body_type Type;
+    check_is_type new_context body_type;
     Pi(v, ty, body_type)
   | App(f, t) -> (
     match reduce (infer gamma f) with
@@ -224,7 +222,6 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   )
 
 and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
-  check_is_type gamma ty;
   let type_of_term = infer gamma term in
   if (alpha (reduce type_of_term) (reduce ty)) then
     ()
