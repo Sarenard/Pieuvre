@@ -1,4 +1,5 @@
-Goal(A -> A).
-intro x.
-intro y.
+Theorem easyimpl : A -> A.
+Proof.
+    intro x.
+    intro y.
 Qed.

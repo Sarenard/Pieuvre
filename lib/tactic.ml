@@ -3,6 +3,7 @@ open Util
 
 let handle_tactic (i, gamma, _locgoal) term tactic : lambdaterm =  
   match tactic with
+  (*TODO : intro should fail if x already in the context*)
   | Intro(x) ->
     let replace_goal goal = (match goal with
       | Goal(k, Pi("_", a, b)) when k=i -> Func(x, a, Goal(k, b))

@@ -1,0 +1,9 @@
+Theorem easyimpl1 : A -> A.
+Proof.
+    intro x.
+Qed.
+Theorem easyimpl2 : A -> A.
+Proof.
+    intro x.
+    trivial.
+Qed.

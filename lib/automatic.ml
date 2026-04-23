@@ -27,19 +27,27 @@ let check_theorem (theorem : lambdaterm) (proof : tactic list)
   (*We finished*)
   (*We reduce the witness*)
   term := reduce !term;
-  (*We show a cool message*)
-  print_endline "Witness of the proof :";
-  affiche_lam !term; print_newline ();
-  print_endline "Typechecking...";
+  let debug = true in
+
+  if debug then (
+    print_endline "Witness of the proof :";
+    affiche_lam !term; print_newline ();
+    print_endline "Typechecking...";
+  );
+
   try 
-  typecheck empty_env (!term) goal;
-  print_endline "Typechecking was a success !!";
-  true
+    typecheck empty_env (!term) goal;
+    if debug then (
+      print_endline "Typechecking was a success !!";
+    );
+    true
   with Type_error -> (
-    print_endline "Typechecking failed...";
-    print_endline (show_lambdaterm !term);
-    print_endline (show_lambdaterm goal);
-    failwith "Typechecking failed...";
+    if debug then (
+      print_endline "Typechecking failed...";
+      print_endline (show_lambdaterm !term);
+      print_endline (show_lambdaterm goal);
+    );
+    false
   )
 ;;
 
@@ -48,12 +56,13 @@ let automatic (content:string) : unit =
   print_endline (show_list show_statement elements);
   let rec handle_statements (statements : statement list) =
     match statements with
-    | Theorem(_name, ty)::Proof(proof)::xs -> (
-      let ok = check_theorem ty proof in ();
+    | Theorem(name, ty)::Proof(proof)::xs -> (
+      let ok = check_theorem ty proof in 
+      if not ok then failwith ("Proof of theorem " ^ name ^ " is incorrect !");
       handle_statements xs;
     )
-    | Theorem(_, _)::[] -> failwith "Theorem without proof attached"
-    | Proof(_)::[] -> failwith "Proof without theorem attached"
+    | Theorem(_, _)::_ -> failwith "Theorem without proof attached"
+    | Proof(_)::_ -> failwith "Proof without theorem attached"
     | [] -> ()
   in handle_statements elements;
 ;;
