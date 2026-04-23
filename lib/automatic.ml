@@ -1,14 +1,6 @@
-open! Expr
-open! Interactive
-
-(*
-let lexbuf = Lexing.from_string string in
-let parse () = Parser.main Lexer.token lexbuf in
-interactive (parse ());
-*)
-
-let parse_type (ty:string) = Parser.main Lexer.token (Lexing.from_string ty);; 
-let parse_tactic (ty:string) = Parser.tactic_main Lexer.token (Lexing.from_string ty);; 
+open Util
+open Tactic
+open Expr
 
 let automatic (lines:string list) : unit = 
   (*Le premier element de lines est le goal*)

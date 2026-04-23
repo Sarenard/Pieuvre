@@ -70,22 +70,6 @@ let rec affiche_lam = function
     print_string ")";
 ;;
 
-let numerote (term:lambdaterm) : lambdaterm =
-  let next = ref 1 in
-  let rec dfs term =
-    match term with
-    | Var _ | Type -> term
-    | Goal (_, a) ->
-        let i = !next in
-        incr next;
-        Goal (i, a)
-    | Pi (x, a, b) -> Pi (x, a, b)
-    | Func (x, a, b) -> Func (x, a, dfs b)
-    | App (a, b) -> App (dfs a, dfs b)
-  in
-  dfs term
-;;
-
 let alpha term1 term2 =
   let rec alpha_aux env12 env21 term1 term2 =
     match (term1, term2) with
@@ -194,6 +178,10 @@ let rec reduce term : lambdaterm =
     | Some(inside) -> reduce inside
     | None -> term
 ;;
+
+let empty_env = [
+  ("A", Type)
+];;
 
 exception Type_error;;
 exception Unbound_variable of string;;
