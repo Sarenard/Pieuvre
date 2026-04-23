@@ -23,6 +23,7 @@ type context =
 type tactic = 
   | Intro of string
   | Trivial
+  | Qed
   | Exact of lambdaterm
   (*| Exact of lambdaterm*)
 [@@deriving show]
@@ -144,7 +145,7 @@ let rec replace term x x' = match term with
   | Func(s, ty, body) -> 
     if s = x then term
     else (
-      let x'free, _ = free_and_bound term [] in
+      let x'free, _ = free_and_bound x' [] in
       if List.mem s x'free then ( 
         let bfree, bbound = free_and_bound body [] in
         let spoiled = x'free @ bfree @ bbound in
@@ -155,7 +156,7 @@ let rec replace term x x' = match term with
   | Pi(s, ty, body) -> 
     if s = x then term
     else (
-      let x'free, _ = free_and_bound term [] in
+      let x'free, _ = free_and_bound x' [] in
       if List.mem s x'free then ( 
         let bfree, bbound = free_and_bound body [] in
         let spoiled = x'free @ bfree @ bbound in
@@ -194,7 +195,34 @@ let rec reduce term : lambdaterm =
     | None -> term
 ;;
 
-let typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : bool =
-  (*TODO : this*)
-  true
+exception Type_error;;
+exception Unbound_variable of string;;
+
+let rec infer (gamma:context) (term:lambdaterm) : lambdaterm =
+  match term with
+  | Var(x) -> (
+    try List.assoc x gamma
+    with Not_found -> raise (Unbound_variable x) 
+  )
+  | Type -> Type
+  | Goal(_, a) -> a
+  (*TODO : more checks here ?*)
+  | Pi(_, _, _) -> Type 
+  (*TODO : more checks here ? (ty is Type ?)*)
+  | Func(v, ty, body) -> 
+    Pi(v, ty, infer ((v, ty)::gamma) body)
+  | App(f, t) -> (
+    match reduce (infer gamma f) with
+    | Pi(x, a, b) -> 
+      typecheck gamma t a;
+      reduce (replace b x t)
+    | _ -> raise Type_error
+  )
+
+and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
+  let type_of_term = infer gamma term in
+  if (alpha (reduce type_of_term) (reduce ty)) then
+    ()
+  else
+    raise Type_error
 ;;

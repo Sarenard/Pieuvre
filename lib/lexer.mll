@@ -19,11 +19,13 @@ rule token = parse
   | ')'             { RPAREN }
   | "=>"             { BIGARROW }
   | "->"             { SMALLARROW }
-  | "Goal"             { GOAL }
 
+  | "."             { DOT }
+  | "Goal"             { GOAL }
   | "intro"             { INTRO }
   | "trivial"             { TRIVIAL }
   | "exact"             { EXACT }
+  | "Qed"             { QED }
 
   | var as s { VAR s }
   | type as s { TYPE s }

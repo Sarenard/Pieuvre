@@ -60,14 +60,27 @@ let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambda
   | App (a, b) -> App (run_replace a func, run_replace b func)
 ;;
 
-let handle_tactic (i, gamma, _locgoal) term tactic = 
+exception GoalRemaining;;
+exception NoFocusedGoal;;
+
+let handle_tactic goal term tactic 
+  : (lambdaterm*bool) = (* (terme de retour, témoin de si on a fini) *) 
   match tactic with
+  | Qed -> 
+      if get_goals term = [] then
+        (term, true)
+      else
+        raise GoalRemaining
+  | _ when goal = None ->
+      raise NoFocusedGoal
   | Intro(x) ->
+    let (i, _gamma, _locgoal) = Option.get goal in
     let replace_goal goal = (match goal with
       | Goal(k, Pi("_", a, b)) when k=i -> Func(x, a, Goal(k, b))
       | _ -> goal
-    ) in run_replace term replace_goal
+    ) in (run_replace term replace_goal, false)
   | Trivial ->
+    let (i, gamma, _locgoal) = Option.get goal in
     let replace_goal goal = (match goal with
       | Goal(k, ty) when i=k -> 
         begin
@@ -78,46 +91,52 @@ let handle_tactic (i, gamma, _locgoal) term tactic =
               goal
         end
       | _ -> goal
-    ) in run_replace term replace_goal
+    ) in (run_replace term replace_goal, false)
   | Exact(t) ->
+    let (i, gamma, _locgoal) = Option.get goal in
     let replace_goal goal = (match goal with
       | Goal(k, ty) when k=i ->
         begin
-          if typecheck gamma t ty then
+          try 
+            typecheck gamma t ty;
             t
-          else
-            goal
+          with Type_error -> goal
         end
       | _ -> goal
-    ) in run_replace term replace_goal
+    ) in (run_replace term replace_goal, false)
 ;;
 
 let interactive_step (term:lambdaterm) : lambdaterm option = 
-  let first3 (x, _, _) = x in
-
   let term = numerote term in
   let mygoals = get_goals term in
 
-  match mygoals with
-    (*TODO : handle the end*)
-    | [] -> 
+  let mygoal = match mygoals with
+  | [] ->
       print_newline ();
-      print_endline "No goals remaining.";
-      print_endline "Witness of the proof :";
-      print_endline (show_lambdaterm term);
+      print_endline "No goals. Type Qed. to finish.";
       None
-    | _ -> (
-      let mygoal = List.hd mygoals in (*TODO : filter for goal 0*)
+  | mygoal :: _ ->
       affiche_goal mygoal;
-      print_string "> ";
-      let input = read_line () in
-      let lexbuf = Lexing.from_string input in
-      let tactic = Parser.tactic_main Lexer.token lexbuf in
-      print_string "Tactique : ";
-      print_string (show_tactic tactic);
-      print_newline ();
-      Some(handle_tactic mygoal term tactic)
-    );
+      Some mygoal
+  in
+
+  print_string "> ";
+  let input = read_line () in
+  let lexbuf = Lexing.from_string input in
+  let tactic = Parser.tactic_main Lexer.token lexbuf in
+  print_string "Tactique : ";
+  print_string (show_tactic tactic);
+  print_newline ();
+  try
+    let (return_term, finished) = handle_tactic mygoal term tactic in
+    if finished then None else Some(return_term)
+  with
+  | GoalRemaining ->
+      print_endline "Qed impossible: there are remaining goals.";
+      Some term
+  | NoFocusedGoal ->
+      print_endline "No focused goal: only Qed. can be used now.";
+      Some term
 ;;
 
 let interactive (term:lambdaterm) : unit = 
@@ -130,5 +149,19 @@ let interactive (term:lambdaterm) : unit =
         current := new_term
     | None ->
         continue := false
-  done
+  done;
+
+  (*We finished*)
+  (*We reduce the witness*)
+  current := reduce !current;
+  (*We show a cool message*)
+  print_newline ();
+  print_endline "No goals remaining.";
+  print_endline "Witness of the proof :";
+  affiche_lam !current; print_newline ();
+  print_endline "Typechecking...";
+  try 
+    typecheck [] (!current) (infer [] term);
+    print_endline "Typechecking was a success !!";
+  with Type_error -> print_endline "There is an error somewhere...";
 ;;
