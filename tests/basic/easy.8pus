@@ -1,5 +1,6 @@
-Theorem easyimpl : A -> A.
+Theorem easyimpl : forall A : Type, A -> A.
 Proof.
+    intro a.
     intro x.
     trivial.
 Qed.

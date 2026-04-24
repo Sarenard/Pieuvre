@@ -1,0 +1,5 @@
+Theorem easyimpl : forall A : Type, A -> A -> A.
+Proof.
+    intro x.
+    intro x.
+Qed.

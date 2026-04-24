@@ -3,7 +3,7 @@
 %}
 
 /* PARTIE 2, on liste les lexèmes (lien avec le fichier lexer.mll) ******* */                                   
-%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE
+%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA
 /*TACTICS*/
 %token INTRO TRIVIAL EXACT DOT QED APPLY
 /*STATEMENTS*/
@@ -58,22 +58,23 @@ constructor:
 /* PARTIE 6 : TERMS ************************************** */                                                         
 
 lambdaterm:
-  | FUN LPAREN x=VAR COLON t=term RPAREN BIGARROW e=lambdaterm {Func(x, t, e)}
+  | FUN LPAREN x=VAR COLON t=lambdaterm RPAREN BIGARROW e=lambdaterm { Func(x, t, e) }
+  | pi_term { $1 }
+
+pi_term:
+  | FORALL x=VAR COLON a=lambdaterm COMMA b=pi_term { Pi(x, a, b) }
+  | a=applic SMALLARROW b=pi_term { Pi("_", a, b) }
   | applic { $1 }
 
 applic:
-  | e1=applic e2=term {App(e1, e2)}
-  | term { $1 }
+  | f=applic a=atom { App(f, a) }
+  | atom { $1 }
 
-term:
-  (*Types*)
-  | TYPE {Type}
-  | t1 = term SMALLARROW t2 = term {Pi("_", t1, t2)} 
-  (*Termes*)
-  | t = VAR {Var t}
-  | GOAL LPAREN t = term RPAREN {Goal(0, t)}
-  | LPAREN t=lambdaterm RPAREN {t}
-  (*Var*)
+atom:
+  | TYPE { Type }
+  | t=VAR { Var t }
+  | GOAL LPAREN t=lambdaterm RPAREN { Goal(0, t) }
+  | LPAREN t=lambdaterm RPAREN { t }
 
 /* PARTIE 7 : TACTICS ************************************** */                                                         
 

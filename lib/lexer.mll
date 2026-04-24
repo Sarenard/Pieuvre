@@ -17,9 +17,12 @@ rule token = parse
   | ')'             { RPAREN }
   | "=>"             { BIGARROW }
   | "->"             { SMALLARROW }
+  | ','             { COMMA }
   | ":=" {DEFINE}
   | "|" {PIPE}
   
+  | "forall" {FORALL}
+
   | "Type" {TYPE}
 
   | "Theorem" {THEOREM}

@@ -35,4 +35,7 @@ setup.log
 # Local OPAM switch
 _opam/
 
+tests/temp.8pus
+
 .codex
+_hidden/

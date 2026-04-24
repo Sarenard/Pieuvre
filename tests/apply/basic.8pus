@@ -1,5 +1,7 @@
-Theorem easyimpl : (A -> B) -> A -> B.
+Theorem easyimpl : forall A : Type, forall B : Type, (A -> B) -> A -> B.
 Proof.
+    intro a.
+    intro b.
     intro f.
     intro x.
     apply f.

@@ -9,15 +9,22 @@ let handle_tactic (i, gamma, _locgoal) (gamma':context) term tactic : lambdaterm
   let big_gamma = (gamma@gamma') in
   match tactic with
   (*TODO : intro should fail if x already in the context*)
-  | Intro(x) -> let replace_goal goal = (match goal with
-      (*TODO : fix this with dependant types*)
-      | Goal(k, Pi("_", a, b)) when k=i -> Func(x, a, Goal(k, b))
-      | _ -> goal
-    ) in run_replace term replace_goal
+  | Intro(x) -> (
+    match List.assoc_opt x big_gamma with
+    | Some(_) -> failwith ("Cannot intro here, variable " ^ x ^ " already taken")
+    | None -> (
+      let replace_goal goal = (match goal with
+        | Goal(k, Pi("_", a, b)) when k=i -> Func(x, a, Goal(k, b))
+        (*dependant*)
+        | Goal(k, Pi(var, a, b)) when k=i -> Func(x, a, Goal(k, replace b var (Var x)))
+        | _ -> goal
+      ) in run_replace term replace_goal
+    )
+  )
   | Trivial -> let replace_goal goal = (match goal with
       | Goal(k, ty) when i=k -> 
         begin
-          match List.find_opt (fun (_y, ty') -> alpha ty' ty) big_gamma with
+          match List.find_opt (fun (_y, ty') -> equiv ty' ty) big_gamma with
           | Some (y, _ty') ->
               Var y
           | None ->
@@ -49,6 +56,12 @@ let handle_tactic (i, gamma, _locgoal) (gamma':context) term tactic : lambdaterm
               let new_goal = Goal(0, a) in
               (*Dependant types so we need to replace*)
               (*TODO : do this but properly with unification*)
+              (* Zoe said :
+                dans une implémentation propre de apply tu remplaces le replace par une unification
+                l'unification te yield une solution
+                ça t'a unifié ton goal et les hypothèses du apply
+                et t'as juste à introduire les hypothèses unifiées
+              *)
               collect_args (new_goal :: args) (replace b arg new_goal)
             | _ -> None
           in (

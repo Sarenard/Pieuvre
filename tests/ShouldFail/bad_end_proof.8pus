@@ -1,9 +1,11 @@
-Theorem easyimpl1 : A -> A.
+Theorem easyimpl1 : forall A : Type, A -> A.
 Proof.
+    intro a.
     intro x.
     trivial.
 Qed.
-Theorem easyimpl2 : A -> A.
+Theorem easyimpl2 : forall A : Type, A -> A.
 Proof.
+    intro a.
     intro x.
 Qed.

@@ -1,5 +1,8 @@
-Theorem easyimpl : (A -> B) -> (B -> C) -> A -> C.
+Theorem easyimpl : forall A : Type, forall B : Type, forall C : Type, (A -> B) -> (B -> C) -> A -> C.
 Proof.
+    intro a.
+    intro b.
+    intro c.
     intro f1.
     intro f2.
     intro x.

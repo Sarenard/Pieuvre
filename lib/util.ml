@@ -38,7 +38,7 @@ let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambda
   match term with
   | Var _ | Type -> term
   | Goal (_i, _a) -> func term
-  | Pi (x, a, b) -> Pi (x, run_replace a func, b)
+  | Pi (x, a, b) -> Pi (x, run_replace a func, run_replace b func)
   | Func (x, a, b) -> Func (x, run_replace a func, run_replace b func)
   | App (a, b) -> App (run_replace a func, run_replace b func)
 ;;

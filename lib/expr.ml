@@ -119,12 +119,21 @@ let alpha term1 term2 =
 
 let rec free_and_bound term bound = match term with
   | Var s -> if List.mem s bound then ([], bound) else ([s], bound)
-  | Func(s, _ty, body) -> free_and_bound body (s::bound)
+  | Func(s, ty, body) -> 
+    let (f1, b1) = free_and_bound ty bound in
+    let (f2, b2) = free_and_bound body (s::bound) in
+    (f1 @ f2, b1 @ b2)
+  | Pi(s, ty, body) -> 
+    let (f1, b1) = free_and_bound ty bound in
+    let (f2, b2) = free_and_bound body (s::bound) in
+    (f1 @ f2, b1 @ b2)
   | App(t1, t2) ->
     let (f1, b1) = free_and_bound t1 bound in
     let (f2, b2) = free_and_bound t2 bound in
     (f1 @ f2, b1 @ b2)
-  | _ -> ([], [])
+  | Type -> ([], bound)
+  | Goal(_, goal) -> free_and_bound goal bound
+;;
 
 let get_fresh v lst =
   let len = String.length v in
@@ -151,26 +160,28 @@ let get_fresh v lst =
 let rec replace term x x' = match term with
   | Var s -> if s = x then x' else Var s
   | Func(s, ty, body) -> 
-    if s = x then term
+    if s = x then Func(s, replace ty x x', body)
     else (
       let x'free, _ = free_and_bound x' [] in
       if List.mem s x'free then ( 
         let bfree, bbound = free_and_bound body [] in
-        let spoiled = x'free @ bfree @ bbound in
+        let bfree', bbound' = free_and_bound ty [] in
+        let spoiled = x'free @ bfree @ bbound @ bfree' @ bbound' in
         let fresh = get_fresh s spoiled in
-        Func(fresh, ty, replace (replace body s (Var fresh)) x x')
-      ) else Func(s, ty, replace body x x')
+        Func(fresh, replace (replace ty s (Var fresh)) x x', replace (replace body s (Var fresh)) x x')
+      ) else Func(s, replace ty x x', replace body x x')
     )
   | Pi(s, ty, body) -> 
-    if s = x then term
+    if s = x then Pi(s, replace ty x x', body)
     else (
       let x'free, _ = free_and_bound x' [] in
       if List.mem s x'free then ( 
         let bfree, bbound = free_and_bound body [] in
-        let spoiled = x'free @ bfree @ bbound in
+        let bfree', bbound' = free_and_bound ty [] in
+        let spoiled = x'free @ bfree @ bbound @ bfree' @ bbound' in
         let fresh = get_fresh s spoiled in
-        Pi(fresh, ty, replace (replace body s (Var fresh)) x x')
-      ) else Pi(s, ty, replace body x x')
+        Pi(fresh, replace (replace ty s (Var fresh)) x x', replace (replace body s (Var fresh)) x x')
+      ) else Pi(s, replace ty x x', replace body x x')
     )
   | App(t1, t2) -> App(replace t1 x x', replace t2 x x')
   | Type -> Type
@@ -180,21 +191,35 @@ let rec betastep term : lambdaterm option =
   match term with
   | Var _ -> None
   | Type -> None
-  | Goal(_, _) -> None
-  | Pi(_, _, _) -> None
-  | Func(v, ty, body) -> (match (betastep body) with
-    | Some t -> Some (Func(v, ty, t)) 
-    | None -> None
-    )
-  | App(Func(v, _ty, body), t) -> Some (replace body v t)
-  | App(f, t) -> (match (betastep f) with
+  | Goal(i, t) ->
+    (match betastep t with
+    | Some t' -> Some (Goal(i, t'))
+    | None -> None)
+  | Pi(x, a, b) ->
+    (match betastep a with
+    | Some a' -> Some (Pi(x, a', b))
+    | None ->
+      match betastep b with
+      | Some b' -> Some (Pi(x, a, b'))
+      | None -> None)
+  | Func(v, ty, body) ->
+    (match betastep ty with
+    | Some ty' -> Some (Func(v, ty', body))
+    | None ->
+      match betastep body with
+      | Some body' -> Some (Func(v, ty, body'))
+      | None -> None)
+  | App(Func(v, _ty, body), t) ->
+      Some (replace body v t)
+  | App(f, t) ->
+    (match betastep f with
     | Some f' -> Some (App(f', t))
-    | None -> (match betastep t with
+    | None ->
+      match betastep t with
       | Some t' -> Some (App(f, t'))
-      | None -> None
-    )
-  )
+      | None -> None)
 ;;
+
 
 let rec reduce term : lambdaterm =
   let newterm = betastep term in
@@ -208,10 +233,7 @@ let equiv a b =
 ;;
 
 let empty_env = [
-  ("D", Type);
-  ("C", Type);
-  ("B", Type);
-  ("A", Type);
+
 ];;
 
 exception Type_error;;

@@ -1,10 +1,12 @@
-Theorem easyimpl : A -> A.
+Theorem easyimpl : forall A : Type, A -> A.
 Proof.
+    intro a.
     intro x.
-    exact (fun (x:A) => x) x.
+    exact (fun (x:a) => x) x.
 Qed.
-Theorem easyimpl2 : A -> A.
+Theorem easyimpl2 : forall A : Type, A -> A.
 Proof.
+    intro a.
     intro x.
-    exact (fun (x:A) => x) x.
+    exact (fun (x:a) => x) x.
 Qed.
