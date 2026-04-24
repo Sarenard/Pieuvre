@@ -60,12 +60,29 @@ let automatic (content:string) : unit =
     | Theorem(name, ty)::Proof(proof)::xs -> (
       let ok = check_theorem gamma ty proof in 
       if not ok then failwith ("Proof of theorem " ^ name ^ " is incorrect !");
+      (*We continue the execution*)
       handle_statements ((name, ty)::gamma) xs;
     )
     
-    | Inductive(name, arity, constructors)::_ -> 
-      check_wellformed_inductive name arity constructors;
-      failwith "Inductive definitions are not supported yet"
+    | Inductive(name, arity, constructors)::xs -> 
+      (*
+        TODO : We will later need to check if the inductive is small or big (when we will have universes)
+        see https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf page 10 (337)
+      *)
+      let new_env = ref gamma in
+      (*we check that the inductive type is correct and add it to the env*)
+      check_wellformed_inductive name (!new_env) arity constructors;
+      new_env := (name, arity)::(!new_env);
+      (*we add constructors to the environment with the good type*)
+      let handle_constructor = function Constructor(name, ty) ->
+        new_env := (name, ty)::(!new_env);
+      in List.iter handle_constructor constructors;
+      print_endline (show_context !new_env); 
+      (*we add the recursion principle to the environment with the good type*)
+      failwith "Not implemented";
+
+      (*We continue the execution*)
+      handle_statements (!new_env) xs;
 
     | Theorem(_, _)::_ -> failwith "Theorem without proof attached"
     | Proof(_)::_ -> failwith "Proof without theorem attached"

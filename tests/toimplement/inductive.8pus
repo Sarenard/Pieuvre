@@ -1,4 +1,8 @@
-Inductive nat : Type :=
-    | Zero : nat
-    | Succ : nat -> nat
+Inductive N : Type :=
+    | Zero : N
+    | Succ : N -> N
+.
+Inductive listn : N -> Type :=
+    | nil : listn Zero
+    | cons : forall n : N, forall A : Type, A -> listn n -> listn (Succ n)
 .

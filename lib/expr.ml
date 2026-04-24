@@ -2,7 +2,7 @@ type lambdaterm =
   (*Variables*)
   | Var of string
   
-  (*universes ?*)
+  (*We will later need to handle Prop and Type(i)*)
   | Type
 
   (**)
@@ -294,17 +294,18 @@ let rec occurs_bound bound name term =
     occurs_bound bound name a || occurs_bound bound name b
 ;;
 
-let check_wellformed_inductive (name:string) (arity:lambdaterm) (constructors:constructor list) : unit =
+let check_wellformed_inductive (name:string) (gamma:context) (arity:lambdaterm) (constructors:constructor list) : unit =
   (*https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf*)
   
   (*Step 1 : Check the arity*)
-  let rec check_arity gamma ty = match ty with
+  let rec check_arity gamma' ty = match ty with
     | Type -> ()
-    | Pi(x, a, b) -> 
-      check_is_type gamma a;
-      check_arity ((x, a)::gamma) b 
+    | Pi(x, a, b) ->
+      let bigger_context = gamma @ gamma' in 
+      check_is_type bigger_context a;
+      check_arity ((x, a)::bigger_context) b 
     | _ -> failwith "Arity of an inductive type is malformed"
-  in check_arity empty_env arity;
+  in check_arity gamma arity;
 
   (*Step 2 : Check the constructors*)
   let check_one = function Constructor(_ctor_name, ty) ->
@@ -322,7 +323,7 @@ let check_wellformed_inductive (name:string) (arity:lambdaterm) (constructors:co
       | App(a, b) when is_constructor bound a && not (occurs_bound bound name b) -> true
       | _ -> false
     in 
-    check_is_type ((name, arity) :: empty_env) ty;
+    check_is_type ((name, arity) :: gamma) ty;
     if not (is_constructor [] ty) then failwith ("Malformed constructor in " ^ name)
   in
   List.iter check_one constructors;

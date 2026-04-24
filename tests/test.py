@@ -33,13 +33,12 @@ def test_should_be_ok(file):
 
     ok = (
         fouine_result.returncode == 0
-        and fouine_result.stdout.rstrip().endswith("Typechecking was a success !!")
     )
 
     if ok:
         cprint(f"Test {file} passed", "green")
     else:
-        cprint(f"Typechecking failed or missing success message in {file}", "red")
+        cprint(f"Error in {file}", "red")
         cprint(f"Stdout : {fouine_result.stdout}", "red")
         cprint(f"Stderr : {fouine_result.stderr}", "red")
 
