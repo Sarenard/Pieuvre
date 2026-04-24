@@ -8,7 +8,6 @@ gamma' : context of the theorem
 let handle_tactic (i, gamma, _locgoal) (gamma':context) term tactic : lambdaterm =  
   let big_gamma = (gamma@gamma') in
   match tactic with
-  (*TODO : intro should fail if x already in the context*)
   | Intro(x) -> (
     match List.assoc_opt x big_gamma with
     | Some(_) -> failwith ("Cannot intro here, variable " ^ x ^ " already taken")
@@ -21,6 +20,7 @@ let handle_tactic (i, gamma, _locgoal) (gamma':context) term tactic : lambdaterm
       ) in run_replace term replace_goal
     )
   )
+  (*TODO : faire ça avec de l'unification*)
   | Trivial -> let replace_goal goal = (match goal with
       | Goal(k, ty) when i=k -> 
         begin
