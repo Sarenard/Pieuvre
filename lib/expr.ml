@@ -280,3 +280,22 @@ and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
   else
     raise Type_error
 ;;
+
+let check_wellformed_inductive (arity:lambdaterm) (constructors:constructor list) : unit =
+  (*https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf*)
+  
+  (*Step 1 : Check the arity*)
+  let rec check_arity gamma ty = match ty with
+    | Type -> ()
+    | Pi(x, a, b) -> 
+      check_is_type gamma a;
+      check_arity ((x, a)::gamma) b 
+    | _ -> failwith "Arity of an inductive type is malformed"
+  in check_arity empty_env arity;
+
+  (*Step 2 : Check the constructors*)
+  let check_one = function | Constructor(_ctor_name, ty) ->
+    failwith "TODO : check wellformedness of constructor"
+  in
+  List.iter check_one constructors;
+;;

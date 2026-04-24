@@ -61,7 +61,6 @@ ml_files = [
     for root, dirs, files in os.walk("tests")
     for f in files
     if f.endswith(".8pus") and "temp.8pus" not in f 
-    and "toimplement" not in root.split(os.sep)
     and "ShouldFail" not in root.split(os.sep)
 ]
 
@@ -70,7 +69,6 @@ should_fail_files = [
     for root, dirs, files in os.walk("tests")
     for f in files
     if f.endswith(".8pus") and "temp.8pus" not in f
-    and "toimplement" not in root.split(os.sep)
     and "ShouldFail" in root.split(os.sep)
 ]
 
