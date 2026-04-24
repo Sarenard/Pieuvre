@@ -63,8 +63,8 @@ let automatic (content:string) : unit =
       handle_statements ((name, ty)::gamma) xs;
     )
     
-    | Inductive(_, arity, constructors)::_ -> 
-      check_wellformed_inductive arity constructors;
+    | Inductive(name, arity, constructors)::_ -> 
+      check_wellformed_inductive name arity constructors;
       failwith "Inductive definitions are not supported yet"
 
     | Theorem(_, _)::_ -> failwith "Theorem without proof attached"

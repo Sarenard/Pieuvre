@@ -281,7 +281,20 @@ and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
     raise Type_error
 ;;
 
-let check_wellformed_inductive (arity:lambdaterm) (constructors:constructor list) : unit =
+let rec occurs_bound bound name term =
+  match term with
+  | Var x -> x = name && not (List.mem x bound)
+  | Type -> false
+  | Goal (_, a) -> occurs_bound bound name a
+  | Pi (x, a, b) ->
+    occurs_bound bound name a || occurs_bound (x :: bound) name b
+  | Func (x, a, b) ->
+    occurs_bound bound name a || occurs_bound (x :: bound) name b
+  | App (a, b) ->
+    occurs_bound bound name a || occurs_bound bound name b
+;;
+
+let check_wellformed_inductive (name:string) (arity:lambdaterm) (constructors:constructor list) : unit =
   (*https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf*)
   
   (*Step 1 : Check the arity*)
@@ -294,8 +307,23 @@ let check_wellformed_inductive (arity:lambdaterm) (constructors:constructor list
   in check_arity empty_env arity;
 
   (*Step 2 : Check the constructors*)
-  let check_one = function | Constructor(_ctor_name, ty) ->
-    failwith "TODO : check wellformedness of constructor"
+  let check_one = function Constructor(_ctor_name, ty) ->
+    let rec is_strict_positive bound ty : bool =
+      match ty with
+      | Var x -> x = name && not (List.mem x bound)
+      | App(a, b) when is_strict_positive bound a && not (occurs_bound bound name b) -> true
+      | Pi(x, a, b) when is_strict_positive (x :: bound) b && not (occurs_bound bound name a) -> true
+      | _ -> false
+    in let rec is_constructor bound ty : bool =
+      match ty with
+      | Var x -> x = name && not (List.mem x bound)
+      | Pi("_", a, b) when is_constructor bound b && is_strict_positive bound a -> true
+      | Pi(x, a, b) when is_constructor (x :: bound) b && not (occurs_bound bound name a) -> true
+      | App(a, b) when is_constructor bound a && not (occurs_bound bound name b) -> true
+      | _ -> false
+    in 
+    check_is_type ((name, arity) :: empty_env) ty;
+    if not (is_constructor [] ty) then failwith ("Malformed constructor in " ^ name)
   in
   List.iter check_one constructors;
 ;;
