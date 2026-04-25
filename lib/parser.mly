@@ -39,8 +39,8 @@ main_tactic:
 /* PARTIE 5 : STATEMENTS ************************************** */                                                         
 
 statement: 
-  | THEOREM name=VAR COLON t=lambdaterm DOT {Theorem(name, t)}
-  | PROOF DOT l=list(tactic_dot) QED DOT {Proof(l)}
+  | THEOREM name=VAR COLON t=lambdaterm DOT {STheorem(name, t)}
+  | PROOF DOT l=list(tactic_dot) QED DOT {SProof(l)}
   (*
   Inductive statements are of the form
   Inductive name : arity :=
@@ -50,7 +50,7 @@ statement:
   .
   by https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf
   *)
-  | INDUCTIVE name=VAR COLON arity=lambdaterm DEFINE cons=list(constructor) DOT {Inductive(name, arity, cons)}
+  | INDUCTIVE name=VAR COLON arity=lambdaterm DEFINE cons=list(constructor) DOT {SInductive(name, arity, cons)}
 
 constructor:
   | PIPE name=VAR COLON ty=lambdaterm {(name, ty)} 

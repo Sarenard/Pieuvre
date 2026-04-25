@@ -3,14 +3,13 @@ open Util
 open Tactic
 
 let affiche_context (gamma:context) : unit =
-  let (gamma_var, gamma_ind) = gamma in
   List.iter
     (fun (x, ty) ->
       print_string x;
       print_string " : ";
-      affiche_lam ty;
-      print_newline ())
-    (List.rev gamma_var)
+      print_endline (affiche_lam ty);
+    )
+    (List.rev gamma.gamma)
 ;;
 
 let affiche_goal (_i, gamma, ty) : unit =
@@ -20,8 +19,7 @@ let affiche_goal (_i, gamma, ty) : unit =
   affiche_context gamma;
   print_string "----------------";
   print_newline ();
-  affiche_lam ty;
-  print_newline ()
+  print_endline (affiche_lam ty);
 ;;
 
 let interactive_step (term:lambdaterm) 
@@ -74,13 +72,13 @@ let interactive () : unit =
 
   (*We finished*)
   (*We reduce the witness*)
-  current := reduce !current;
+  current := reduce empty_env !current;
   (*We show a cool message*)
   print_newline ();
   print_endline "No goals remaining.";
   print_endline "Witness of the proof :";
-  affiche_lam !current; print_newline ();
-  affiche_lam goal; print_newline ();
+  print_endline (affiche_lam !current);
+  print_endline (affiche_lam goal);
   print_endline "Typechecking...";
   try 
     typecheck empty_env (!current) goal;

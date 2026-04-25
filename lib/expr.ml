@@ -23,6 +23,48 @@ type lambdaterm =
 [@@deriving show]
 ;;
 
+
+let rec affiche_lam_list = function
+  | [] -> ""
+  | [t] -> affiche_lam t
+  | t :: q ->
+    affiche_lam t ^ "; " ^ affiche_lam_list q
+
+and affiche_lam ty : string = 
+  let prec = function
+    | Var _ | Type | Inductive(_) | Constructor(_, _, _) | Goal(_) -> 10
+    | App(_, _) -> 5
+    | Pi(_, _, _) -> 3
+    | Func(_, _, _) -> 1
+  in
+  let pself = prec ty in
+  let paren e : string = 
+    if prec e <= pself then "(" ^ affiche_lam e ^ ")" else affiche_lam e
+  in
+  let sparen e : string = 
+    if prec e < pself then "(" ^ affiche_lam e ^ ")" else affiche_lam e
+  in
+  match ty with
+  | Var(x) -> x
+  | Type -> "Type"
+  | Inductive nb ->
+    "<Inductive(" ^ string_of_int nb ^ ")>";
+  | Constructor(a, b, lt) ->
+    "<Constructor(" ^ string_of_int a ^ ", " ^ string_of_int b ^ ", [" ^ affiche_lam_list lt ^ "])>";
+  | Pi("_", a, b) ->
+    paren a ^ " -> " ^ sparen b
+  | Pi(x, a, b) -> "(" ^ x ^ " : " ^ affiche_lam a ^ ") -> " ^ sparen b
+  | Func(x, a, b) -> "fun" ^ x ^ " : " ^ affiche_lam a ^ " => " ^ affiche_lam b
+  | App(a, b) -> sparen a ^ " " ^ paren b
+  | Goal(_, a) -> "Goal(" ^ affiche_lam a ^ ")"
+;;
+
+let pp_lambdaterm fmt t =
+  Format.pp_print_string fmt (affiche_lam t)
+
+let show_lambdaterm t =
+  Format.asprintf "%a" pp_lambdaterm t
+
 type tactic = 
 | Intro of string
 | Trivial
@@ -41,95 +83,26 @@ type inductive_type = (string * lambdaterm * constructor list)
 [@@deriving show]
 ;;
 
-type context = 
-  (*
-  usual gamma
-  inductive types list
-  *)
-  (string * lambdaterm) list * inductive_type list
+type context = {
+  gamma : (string * lambdaterm) list;
+  values : (string * lambdaterm) list;
+  inductive_types : inductive_type list;
+}
 [@@deriving show]
 ;;
 
 type statement =
   (*th <name> : Goal(...)*)
-  | Theorem of string * lambdaterm
-  | Proof of tactic list
+  | STheorem of string * lambdaterm
+  | SProof of tactic list
   (*
   Inductive <name> : <arity> :=
   <[
     constructor
   ]>
   *)
-  | Inductive of inductive_type
+  | SInductive of inductive_type
 [@@deriving show]
-;;
-
-(*TODO : fonction eval*)
-
-let rec affiche_lam_list = function
-  | [] -> ()
-  | [t] -> affiche_lam t
-  | t :: q ->
-    affiche_lam t;
-    print_string "; ";
-    affiche_lam_list q
-
-and affiche_lam = function
-  | Var(x) -> print_string x
-  | Type -> print_string "Type"
-  | Inductive nb ->
-    print_string "Inductive(";
-    print_int nb;
-    print_string ")";
-  | Constructor(a, b, lt) ->
-    print_string "Constructor(";
-    print_int a;
-    print_string ", ";
-    print_int b;
-    print_string ", ";
-    print_string "[";
-    affiche_lam_list lt;
-    print_string "]";
-    print_string ")";
-  (*TODO : show parentheses only when nessessary*)
-  | Pi(x, a, b) ->
-    if x = "_" then
-      (
-        print_string "(";
-        affiche_lam a;
-        print_string " -> ";
-        affiche_lam b;
-        print_string ")";
-      )
-    else
-      (
-        print_string "Pi(";
-        print_string x;
-        print_string ", ";
-        affiche_lam a;
-        print_string ", ";
-        affiche_lam b;
-        print_string ")";
-      )
-  | Func(x, a, b) ->
-    print_string "fun (";
-    print_string x;
-    print_string ":";
-    affiche_lam a;
-    print_string ") => ";
-    affiche_lam b;
-  | App(a, b) ->
-    print_string "(";
-    affiche_lam a;
-    print_string ") (";
-    affiche_lam b;
-    print_string ")";
-  | Goal(i, a) ->
-    print_string "Goal(";
-    print_int i;
-    print_string ", ";
-    affiche_lam a;
-    print_string ")";
 ;;
 
 let alpha term1 term2 =
@@ -243,7 +216,7 @@ let rec replace term x x' = match term with
   | Constructor(i, j, args) ->
     Constructor(i, j, List.map (fun arg -> replace arg x x') args)
 
-let rec betastep term : lambdaterm option =
+let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
   match term with
   | Var _ -> None
   | Type -> None
@@ -252,54 +225,63 @@ let rec betastep term : lambdaterm option =
     let rec aux acc = function
       | [] -> None
       | t :: q ->
-          match betastep t with
+          match betastep ctx t with
           | Some t' -> Some (Constructor(i, j, List.rev_append acc (t' :: q)))
           | None -> aux (t :: acc) q
     in
     aux [] args
   | Goal(i, t) ->
-    (match betastep t with
+    (match betastep ctx t with
     | Some t' -> Some (Goal(i, t'))
     | None -> None)
   | Pi(x, a, b) ->
-    (match betastep a with
+    (match betastep ctx a with
     | Some a' -> Some (Pi(x, a', b))
     | None ->
-      match betastep b with
+      match betastep ctx b with
       | Some b' -> Some (Pi(x, a, b'))
       | None -> None)
   | Func(v, ty, body) ->
-    (match betastep ty with
+    (match betastep ctx ty with
     | Some ty' -> Some (Func(v, ty', body))
     | None ->
-      match betastep body with
+      match betastep ctx body with
       | Some body' -> Some (Func(v, ty, body'))
       | None -> None)
   | App(Func(v, _ty, body), t) ->
-      Some (replace body v t)
+    Some (replace body v t)
+  | App(Constructor(i, j, lst), t) ->
+    Some(Constructor(i, j, lst @ [t]))
+  | App(Var(x), t) -> (
+    match List.assoc_opt x ctx.gamma with
+    | Some (Constructor (i, j, lst)) -> Some (Constructor (i, j, lst @ [t]))
+    | Some (Inductive(i)) -> Some (App(Inductive(i), t))
+    | _ ->
+      match betastep ctx t with
+      | Some t' -> Some (App(Var(x), t'))
+      | None -> None
+    )
   | App(f, t) ->
-    (match betastep f with
+    (match betastep ctx f with
     | Some f' -> Some (App(f', t))
     | None ->
-      (*TODO : if f reduced is a var as a constructor, reduce to Constructor()*)
-      match betastep t with
+      match betastep ctx t with
       | Some t' -> Some (App(f, t'))
       | None -> None)
 ;;
 
-
-let rec reduce term : lambdaterm =
-  let newterm = betastep term in
+let rec reduce (ctx:context) term : lambdaterm =
+  let newterm = betastep ctx term in
   match newterm with
-    | Some(inside) -> reduce inside
+    | Some(inside) -> reduce ctx inside
     | None -> term
 ;;
 
-let equiv a b = 
-  alpha (reduce a) (reduce b)
+let equiv (ctx:context) a b = 
+  alpha (reduce ctx a) (reduce ctx b)
 ;;
 
-let empty_env = ([], []);;
+let empty_env = { gamma = []; inductive_types = []; values = []};;
 
 exception Type_error;;
 exception Unexpected_goal;;
@@ -307,13 +289,15 @@ exception Unbound_variable of string;;
 
 (*we will need to change that with universes*)
 let rec check_is_type gamma ty =
-  match reduce (infer gamma ty) with
+  match reduce gamma (infer gamma ty) with
   | Type -> ()
   | _ -> raise Type_error
 
 and infer (gamma:context) (term:lambdaterm) : lambdaterm =
-  let (gamma_var, gamma_ind) = gamma in
-  match term with
+  let gamma_var = gamma.gamma in
+  let gamma_ind = gamma.inductive_types in
+  let gamma_val = gamma.values in
+  match reduce gamma term with
   | Var(x) -> (
     try List.assoc x gamma_var
     with Not_found -> raise (Unbound_variable x) 
@@ -322,29 +306,33 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   | Type -> Type
   | Goal(_, _a) -> raise Unexpected_goal;
   | Pi(x, a, b) -> 
-    let new_context = ((x, a)::gamma_var, gamma_ind) in
+    let new_context = { gamma = (x, a) :: gamma_var; inductive_types = gamma_ind; values = gamma_val } in
     check_is_type gamma a;
     check_is_type new_context b;
     Type 
   | Func(v, ty, body) -> 
     check_is_type gamma ty;
-    let new_context = ((v, ty)::gamma_var, gamma_ind) in
+    let new_context = { gamma = (v, ty) :: gamma_var; inductive_types = gamma_ind; values = gamma_val } in
     let body_type = infer new_context body in
     check_is_type new_context body_type;
     Pi(v, ty, body_type)
   | App(f, t) -> (
-    match reduce (infer gamma f) with
+    match infer gamma (reduce gamma f) with
     | Pi(x, a, b) -> 
       typecheck gamma t a;
-      reduce (replace b x t)
-    | _ -> raise Type_error
+      reduce gamma (replace b x t)
+    | _ -> 
+      print_endline "Erreur de type dans un app";
+      raise Type_error;
   )
-  | Inductive(i) -> failwith "TODO"
-  | Constructor(i, j, args) -> failwith "TODO"
+  | Inductive(_) ->
+    assert false;
+  | Constructor(_) ->
+    assert false;
 
 and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
   let type_of_term = infer gamma term in
-  if equiv type_of_term ty then
+  if equiv gamma type_of_term ty then
     ()
   else
     raise Type_error
@@ -367,14 +355,16 @@ let rec occurs_bound bound name term =
 
 (*https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf*)
 let check_wellformed_inductive (name:string) (gamma:context) (arity:lambdaterm) (constructors:constructor list) : unit =
-  let (gamma_var, gamma_ind) = gamma in
+  let gamma_var = gamma.gamma in
+  let gamma_ind = gamma.inductive_types in
+  let gamma_val = gamma.values in
 
   (*Step 1 : Check the arity*)
   let rec check_arity gamma' ty = match ty with
     | Type -> ()
     | Pi(x, a, b) ->
       let bigger_context = (x, a) :: gamma' in 
-      check_is_type (gamma', gamma_ind) a;
+      check_is_type { gamma = gamma'; inductive_types = gamma_ind; values = gamma_val } a;
       check_arity bigger_context b 
     | _ -> failwith "Arity of an inductive type is malformed"
   in check_arity gamma_var arity;
@@ -395,7 +385,7 @@ let check_wellformed_inductive (name:string) (gamma:context) (arity:lambdaterm) 
       | App(a, b) when is_constructor bound a && not (occurs_bound bound name b) -> true
       | _ -> false
     in 
-    let new_env = (((name, arity) :: gamma_var), gamma_ind) in
+    let new_env = { gamma = (name, arity) :: gamma_var; inductive_types = gamma_ind ; values = gamma_val} in
     check_is_type new_env ty;
     if not (is_constructor [] ty) then failwith ("Malformed constructor in " ^ name)
   in

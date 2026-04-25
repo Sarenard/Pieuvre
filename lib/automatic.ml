@@ -26,12 +26,12 @@ let check_theorem (gamma : context) (theorem : lambdaterm) (proof : tactic list)
 
   (*We finished*)
   (*We reduce the witness*)
-  term := reduce !term;
+  term := reduce gamma !term;
   let debug = true in
 
   if debug then (
     print_endline "Witness of the proof :";
-    affiche_lam !term; print_newline ();
+    print_endline (affiche_lam !term);
     print_endline "Typechecking...";
   );
 
@@ -44,8 +44,8 @@ let check_theorem (gamma : context) (theorem : lambdaterm) (proof : tactic list)
   with Type_error -> (
     if debug then (
       print_endline "Typechecking failed...";
-      print_endline (show_lambdaterm !term);
-      print_endline (show_lambdaterm goal);
+      print_endline (affiche_lam !term);
+      print_endline (affiche_lam goal);
     );
     false
   )
@@ -60,16 +60,15 @@ let automatic (content:string) : unit =
     print_endline (show_context gamma);
     print_newline ();
     match statements with
-    | Theorem(name, ty)::Proof(proof)::xs -> (
+    | STheorem(name, ty)::SProof(proof)::xs -> (
       let ok = check_theorem gamma ty proof in 
       if not ok then failwith ("Proof of theorem " ^ name ^ " is incorrect !");
       (*We continue the execution*)
-      let (gamma_var, gamma_ind) = gamma in
-      let new_env = ((name, ty)::gamma_var, gamma_ind) in
+      let new_env = { gamma with gamma = (name, ty) :: gamma.gamma } in
       handle_statements new_env xs;
     )
     
-    | Inductive(name, arity, constructors)::xs -> 
+    | SInductive(name, arity, constructors)::xs -> 
       (*
         TODO : We will later need to check if the inductive is small or big (when we will have universes)
         see https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf page 10 (337)
@@ -78,27 +77,34 @@ let automatic (content:string) : unit =
       let new_env = ref gamma in
       (*we check that the inductive type is correct and add it to the env*)
       check_wellformed_inductive name (!new_env) arity constructors;
-      (*TODO : change this*)
-      let (new_env_var, new_env_ind) = !new_env in
-      let i = List.length new_env_ind in
-      new_env := ((name, Inductive(i))::new_env_var, (name, arity, constructors)::new_env_ind);
+      let i = List.length (!new_env).inductive_types in
+      new_env := {
+        gamma = (name, arity) :: (!new_env).gamma;
+        inductive_types = (!new_env).inductive_types @ [(name, arity, constructors)];
+        values = (name, Inductive(i)) :: (!new_env).values;
+      };
       (*we add constructors to the environment with the good type*)
-      (*TODO : change this*)
       let handle_constructor j (name, ty) = (
-        let (new_env_var, new_env_ind) = !new_env in
-        let new_var= name, Constructor(i, j, []) in
-        new_env := (new_var::new_env_var, new_env_ind);
+        let new_var = (name, Constructor(i, j, [])) in
+        new_env := { 
+          gamma = (name, ty) :: (!new_env).gamma;
+          inductive_types = (!new_env).inductive_types;
+          values = new_var :: (!new_env).values; 
+        };
       )
       in List.iteri handle_constructor constructors;
-      print_endline (show_context !new_env); 
       (*we add the recursion principle to the environment with the good type*)
-      failwith "Not implemented";
-
+      let recursor = compute_recursor name arity constructors in
+      new_env := { 
+          gamma = (name ^ "_rec", recursor) :: (!new_env).gamma;
+          inductive_types = (!new_env).inductive_types;
+          values = (!new_env).values; 
+      };
       (*We continue the execution*)
       handle_statements (!new_env) xs;
 
-    | Theorem(_, _)::_ -> failwith "Theorem without proof attached"
-    | Proof(_)::_ -> failwith "Proof without theorem attached"
+    | STheorem(_, _)::_ -> failwith "Theorem without proof attached"
+    | SProof(_)::_ -> failwith "Proof without theorem attached"
     | [] -> ()
 
   in handle_statements empty_env elements;

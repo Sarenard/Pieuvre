@@ -6,10 +6,14 @@ gamma : context of the goal
 gamma' : context of the theorem
 *)
 let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : lambdaterm =  
-  let (gamma_var, gamma_ind) = gamma in
-  let (gamma_var', gamma_ind') = gamma' in
-  let big_gamma = (gamma_var@gamma_var', gamma_ind@gamma_ind') in
-  let (gamma_var, gamma_ind) = big_gamma in
+  let gamma_var = gamma.gamma in
+  let gamma_var' = gamma'.gamma in
+  let big_gamma = {
+    gamma = gamma_var @ gamma_var';
+    inductive_types = gamma.inductive_types @ gamma'.inductive_types;
+    values = gamma.values @ gamma'.values;
+  } in
+  let gamma_var = big_gamma.gamma in
   match tactic with
   | Intro(x) -> (
     match List.assoc_opt x gamma_var with
@@ -27,7 +31,7 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
   | Trivial -> let replace_goal goal = (match goal with
       | Goal(k, ty) when i=k -> 
         begin
-          match List.find_opt (fun (_y, ty') -> equiv ty' ty) gamma_var with
+          match List.find_opt (fun (_y, ty') -> equiv big_gamma ty' ty) gamma_var with
           | Some (y, _ty') ->
               Var y
           | None ->
@@ -52,9 +56,9 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
         match List.find_opt (fun (y, _) -> x = y) gamma_var with
         | Some (_, fty) ->
           let rec collect_args args fty =
-            let fty = reduce fty in
+            let fty = reduce big_gamma fty in
             match fty with
-            | _ when equiv fty ty -> Some (List.rev args)
+            | _ when equiv big_gamma fty ty -> Some (List.rev args)
             | Pi(arg, a, b) ->
               (*we put back numbers after so its okay to put them as 0*)
               let new_goal = Goal(0, a) in

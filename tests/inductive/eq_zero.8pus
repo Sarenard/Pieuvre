@@ -1,0 +1,11 @@
+Inductive N : Type :=
+    | Zero : N
+    | Succ : N -> N
+.
+Inductive eq : forall A : Type, A -> A -> Type :=
+    | refl : forall A : Type, forall x : A, eq A x x
+.
+Theorem zero_eq : eq N Zero Zero.
+Proof.
+    exact refl N Zero.
+Qed.
