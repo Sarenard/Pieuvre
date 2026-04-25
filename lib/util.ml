@@ -72,8 +72,20 @@ let rec listify used = function
   | _ -> [];
 ;;
 
+let rec listify_app used = function
+  | App(a, Var(x)) -> 
+    x::(listify_app used a)
+  | Var(x) -> [];
+  | _ -> [];
+;;
+
 let rec last_arrow = function
   | Pi(x, a, b) -> last_arrow b
+  | ty -> ty
+;;
+
+let rec last_app = function
+  | App(a, b) -> last_app a
   | ty -> ty
 ;;
 
@@ -81,6 +93,25 @@ let rec last_app_change x = function
   | App(a, b) -> App(last_app_change x a, b)
   | ty -> x
 ;;
+
+let rec instantiate_return_type term args =
+  match term, args with
+  | Pi(x, _, body), (name, _) :: rest ->
+    instantiate_return_type (replace body x (Var(name))) rest
+  | ty, [] -> ty
+  | ty, _ -> ty
+;;
+
+(*
+RECURSOR OF FIN
+Check fin_ind.
+T_ind : 
+forall P : forall n : nat, T n -> Prop,
+P 0 a ->
+(forall (n m : nat) (t : T n) (t0 : T m),
+P n t -> P m t0 -> P (n + m) (b n m t t0)) ->
+forall (n : nat) (t : T n), P n t
+*)
 
 let compute_recursor name arity constructors = 
   (*setup of the names*)
@@ -139,24 +170,31 @@ let compute_recursor name arity constructors =
     )
   ) in
 
-  let handle_constructor (name, constructor) = (
+  let handle_constructor (cname, constructor) = (
     let listified = listify used_vars constructor in
     print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") listified);
+    let filtered = List.filter (fun (x, a) -> (last_app a) = Var(name)) listified in
+    print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") filtered);
+    let instantiated_return = instantiate_return_type constructor listified in
     let p_call = (
       App(
-        last_app_change (Var(prop_name)) (last_arrow constructor),
-        (
-          List.fold_left
-          (fun acc (name, ty) -> App(acc, Var(name)))
-          (Var(name))
-          (listified)
-        )
+        last_app_change (Var(prop_name)) instantiated_return,
+        List.fold_left
+        (fun acc (name, ty) -> App(acc, Var(name)))
+        (Var(cname))
+        (listified)
       )
     ) in
     List.fold_left 
     (fun acc (name, ty) -> (Pi(name, ty, acc)))
+    (*This is the Pn in Pn -> Pn+1 inside of nats rec*)
     (
+      List.fold_left
+      (fun acc (name, ty) ->
+        Pi("_", App(last_app_change (Var(prop_name)) ty, Var(name)), acc)
+      )
       p_call
+      (List.rev filtered)
     )
     (List.rev listified) 
   ) in
@@ -173,5 +211,3 @@ let compute_recursor name arity constructors =
     body
   )
 ;;
-
-

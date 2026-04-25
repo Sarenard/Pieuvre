@@ -23,7 +23,6 @@ type lambdaterm =
 [@@deriving show]
 ;;
 
-
 let rec affiche_lam_list = function
   | [] -> ""
   | [t] -> affiche_lam t
