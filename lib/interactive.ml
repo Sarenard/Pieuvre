@@ -3,13 +3,14 @@ open Util
 open Tactic
 
 let affiche_context (gamma:context) : unit =
+  let (gamma_var, gamma_ind) = gamma in
   List.iter
     (fun (x, ty) ->
       print_string x;
       print_string " : ";
       affiche_lam ty;
       print_newline ())
-    (List.rev gamma)
+    (List.rev gamma_var)
 ;;
 
 let affiche_goal (_i, gamma, ty) : unit =
@@ -26,7 +27,7 @@ let affiche_goal (_i, gamma, ty) : unit =
 let interactive_step (term:lambdaterm) 
 : (lambdaterm * bool) (*(term, should we continue)*) = 
   let term = numerote term in
-  let mygoals = get_goals term in
+  let mygoals = get_goals empty_env term in
 
   let mygoal = match mygoals with
   | [] ->
@@ -48,7 +49,7 @@ let interactive_step (term:lambdaterm)
     print_string (show_tactic tactic);
     print_newline ();
     let return_term = handle_tactic goal empty_env term tactic in
-    (return_term, (get_goals return_term <> []))
+    (return_term, (get_goals empty_env return_term <> []))
   )
   | None -> (
       (term, input <> "Qed.")

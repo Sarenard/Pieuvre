@@ -53,7 +53,7 @@ statement:
   | INDUCTIVE name=VAR COLON arity=lambdaterm DEFINE cons=list(constructor) DOT {Inductive(name, arity, cons)}
 
 constructor:
-  | PIPE name=VAR COLON ty=lambdaterm {Constructor(name, ty)} 
+  | PIPE name=VAR COLON ty=lambdaterm {(name, ty)} 
 
 /* PARTIE 6 : TERMS ************************************** */                                                         
 

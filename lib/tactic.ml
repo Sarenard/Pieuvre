@@ -5,11 +5,14 @@ open Util
 gamma : context of the goal
 gamma' : context of the theorem
 *)
-let handle_tactic (i, gamma, _locgoal) (gamma':context) term tactic : lambdaterm =  
-  let big_gamma = (gamma@gamma') in
+let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : lambdaterm =  
+  let (gamma_var, gamma_ind) = gamma in
+  let (gamma_var', gamma_ind') = gamma' in
+  let big_gamma = (gamma_var@gamma_var', gamma_ind@gamma_ind') in
+  let (gamma_var, gamma_ind) = big_gamma in
   match tactic with
   | Intro(x) -> (
-    match List.assoc_opt x big_gamma with
+    match List.assoc_opt x gamma_var with
     | Some(_) -> failwith ("Cannot intro here, variable " ^ x ^ " already taken")
     | None -> (
       let replace_goal goal = (match goal with
@@ -24,7 +27,7 @@ let handle_tactic (i, gamma, _locgoal) (gamma':context) term tactic : lambdaterm
   | Trivial -> let replace_goal goal = (match goal with
       | Goal(k, ty) when i=k -> 
         begin
-          match List.find_opt (fun (_y, ty') -> equiv ty' ty) big_gamma with
+          match List.find_opt (fun (_y, ty') -> equiv ty' ty) gamma_var with
           | Some (y, _ty') ->
               Var y
           | None ->
@@ -42,10 +45,11 @@ let handle_tactic (i, gamma, _locgoal) (gamma':context) term tactic : lambdaterm
         end
       | _ -> goal
     ) in run_replace term replace_goal
+  (*TODO : add apply but for constructors too*)
   | Apply(x) -> let replace_goal goal =
       match goal with
       | Goal(k, ty) when k = i -> (
-        match List.find_opt (fun (y, _) -> x = y) big_gamma with
+        match List.find_opt (fun (y, _) -> x = y) gamma_var with
         | Some (_, fty) ->
           let rec collect_args args fty =
             let fty = reduce fty in
