@@ -370,6 +370,16 @@ let check_wellformed_inductive (name:string) (gamma:context) (arity:lambdaterm) 
 
   (*Step 2 : Check the constructors*)
   let check_one = function (_ctor_name, ty) ->
+    (*
+    TODO : check positivity when under other types
+    Example of a problematic case :
+    Inductive bad
+    | mk : (option bad -> A) -> bad
+    And an ok case :
+    Inductive nat
+    | c : option nat -> nat
+    For this we will need to save the polarity of every argument of every inductive type.
+    *)
     let rec is_strict_positive bound ty : bool =
       match ty with
       | Var x -> x = name && not (List.mem x bound)
