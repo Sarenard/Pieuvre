@@ -172,6 +172,13 @@ let rec free_and_bound term bound = match term with
 ;;
 
 (*
+Gets every unfresh variable of a term
+*)
+let unfresh term =
+  let free, bound = free_and_bound term [] in free@bound
+;;
+
+(*
 Generates a fresh variable (trying to match the name v)
 x0 -> xi with i the smallest so that it is not taken
 *)

@@ -20,6 +20,7 @@ type lcontext = (string * lt) list
 [@@deriving show]
 ;;
 
+(*WARNING : NOT USED RIGHT NOW*)
 type globalenv = (string * lt) list
 [@@deriving show]
 ;;
@@ -87,26 +88,48 @@ let rec delta_sigma_reduce_weak (lt1:lt) : lt =
 
 exception UnificationError of lt*lt;;
 
-let unify (menv:mcontext) (lenv:lcontext) (e1:lt) (e2:lt) : mcontext =
+let rec unify (sigma0:mcontext) (lenv:lcontext) (e1:lt) (e2:lt) : mcontext =
   match (e1, e2) with
   (*TYPE-SAME*)
-  | (Type, Type) -> menv
+  | (Type, Type) -> sigma0
   (*VAR-SAME*)
   (*RIGID-SAME*) (*we dont use E right now, we*)
   | (Var(x), Var(y)) ->
     if x <> y then raise (UnificationError(e1, e2));
-    menv
-  (*PROD-SAME*)
-  | (Pi(x, t1, t2), Pi(y, t1, t2)) ->
+    sigma0
+  (*PROD-SAME and LAM-SAME*)
+  | (Pi(x, t1, t2), Pi(y, u1, u2))
+  | (Func(x, t1, t2), Func(y, u1, u2)) ->
     (*we \alpha-rename both*)
-    (*TODO*)
-      
+    let t1spoiled = unfresh t1 in
+    let t2spoiled = unfresh t2 in
+    let u1spoiled = unfresh u1 in
+    let u2spoiled = unfresh u2 in
+    let contextbound = List.map (fun (a, b) -> a) lenv in
+    let spoiled = t1spoiled @ t2spoiled @ u1spoiled @ u2spoiled @ contextbound in
+    let fresh = get_fresh "unif" spoiled in
+    let x' = Var(fresh) in
+    let t2' = replace t2 x x' in
+    let u2' = replace u2 y x' in
+    (*we compute the new mcontext*)
+    let sigma1 = unify sigma0 lenv t1 u1 in
+    let sigma2 = unify sigma1 ((fresh, t1)::lenv) t2' u2' in
+    sigma2 
+  (*APP-FO*)
+  | (App(t, tn), App(u, un)) ->
+    failwith "TODO";
+  (*TODO : META-\deltaR*)
+  (*TODO : META-\deltaL*)
+  (*TODO : META-SAME*)
+  (*TODO : META-INSTR*)
+  (*TODO : META-INSTL*)
+  (*we didnt succeed the unification, we raise an error*)
   | _ -> raise (UnificationError(e1, e2))
 ;;
 
 let test menv lenv e1 e2 = 
   try 
-    let newctx = unify empty_mcontext [] e1 e2 in
+    let newctx = unify menv lenv e1 e2 in
     print_endline ("( "^(show_lt e1) ^ " ~ " ^ (show_lt e2) ^ " ) = " ^ show_mcontext newctx);
   with
   | UnificationError(e1, e2) ->
@@ -119,4 +142,22 @@ let unify_run () =
   test empty_mcontext [] Type Type; 
   test empty_mcontext [] (Var("x")) (Var("y")); 
   test empty_mcontext [] (Var("x")) (Var("x")); 
+  test empty_mcontext []
+    (Pi("x", Type, Var("x")))
+    (Pi("y", Type, Var("y")));
+  test empty_mcontext []
+    (Pi("x", Type, Type))
+    (Pi("y", Type, Type));
+  test empty_mcontext []
+    (Pi("x", Type, Var("x")))
+    (Pi("y", Type, Var("z")));
+  test empty_mcontext []
+    (Func("x", Type, Var("x")))
+    (Func("y", Type, Var("y")));
+  test empty_mcontext []
+    (Func("x", Type, Type))
+    (Func("y", Type, Type));
+  test empty_mcontext []
+    (Func("x", Type, Var("x")))
+    (Func("y", Type, Var("z")));
 ;;
