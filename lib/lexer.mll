@@ -10,6 +10,7 @@ let var = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
                
 rule token = parse
   | [' ' '\n' '\t']     { token lexbuf }
+  | "(*"               { comment 1 lexbuf }
 
   | "fun"             { FUN }
   | ':'             { COLON }
@@ -40,3 +41,12 @@ rule token = parse
   | var as s { VAR s }
   
   | eof               { EOF }
+
+and comment depth = parse
+  | "(*"              { comment (depth + 1) lexbuf }
+  | "*)"              {
+      if depth = 1 then token lexbuf
+      else comment (depth - 1) lexbuf
+    }
+  | eof               { failwith "Unterminated comment" }
+  | _                 { comment depth lexbuf }

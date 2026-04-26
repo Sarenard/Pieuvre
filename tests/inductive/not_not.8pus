@@ -1,0 +1,10 @@
+Inductive Bot : Type := .
+
+Theorem notnot : forall A : Type, A -> ((A -> Bot) -> Bot).
+Proof.
+    intro A.
+    intro x.
+    intro f.
+    apply f.
+    exact x.
+Qed.

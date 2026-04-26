@@ -52,6 +52,7 @@ let check_theorem (gamma : context) (theorem : lambdaterm) (proof : tactic list)
 ;;
 
 let automatic (content:string) : unit = 
+  let debug = true in
   let elements = parse_statements content in
   print_endline (show_list show_statement elements);
   
@@ -97,6 +98,10 @@ let automatic (content:string) : unit =
       in List.iteri handle_constructor constructors;
       (*we add the recursion principle to the environment with the good type*)
       let recursor = compute_recursor name arity constructors in
+      if debug then (
+        print_endline ("Recursor for " ^ name ^ " :");
+        print_endline (affiche_lam recursor);
+      );
       new_env := { 
           gamma = (name ^ "_rec", recursor) :: (!new_env).gamma;
           inductive_types = (!new_env).inductive_types;

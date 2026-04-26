@@ -1,0 +1,102 @@
+(*
+In this file are all of the proofs asked for in 6.4.1
+"Formules à prouver"
+*)
+
+Inductive Bot : Type := .
+
+Theorem proof1 : 
+    forall A : Type, forall B : Type, forall C : Type,
+    (A -> B -> C) -> (B -> A -> C).
+Proof.
+    intro A.
+    intro B.
+    intro C.
+    intro f.
+    intro b.
+    intro a.
+    apply f.
+    trivial.
+    trivial.
+Qed.
+
+Theorem proof2:
+    forall A : Type, forall B : Type,
+    A -> B -> A.
+Proof.
+    intro A.
+    intro B.
+    intro a.
+    intro b.
+    trivial.
+Qed.
+
+Theorem proof3:
+    forall A : Type, forall B : Type,
+    A -> (A -> B) -> B.
+Proof.
+    intro A.
+    intro B.
+    intro a.
+    intro f.
+    apply f.
+    trivial.
+Qed.
+
+Theorem proof4:
+    forall A : Type, forall B : Type, forall C : Type,
+    (A -> B) -> (B -> C) -> A -> C.
+Proof.
+    intro A. intro B. intro C.
+    intro f. intro g.
+    intro a.
+    apply g. apply f.
+    trivial.
+Qed.
+
+Theorem proof5:
+    forall A : Type, forall B : Type,
+    ((A -> A) -> B) -> B.
+Proof.
+    intro A. intro B.
+    intro f.
+    apply f.
+    intro a.
+    trivial.
+Qed.
+
+Theorem proof6:
+    forall A : Type, forall B : Type, forall C : Type,
+    (A -> B -> C) -> (A -> B) -> A -> C.
+Proof.
+    intro A. intro B. intro C.
+    intro f. intro g.
+    intro a.
+    apply f.
+    trivial.
+    apply g.
+    trivial.
+Qed.
+
+Theorem proof7:
+    forall A : Type,
+    A -> ((A -> Bot) -> Bot).
+Proof.
+    intro A.
+    intro x.
+    intro f.
+    apply f.
+    exact x.
+Qed.
+
+Theorem proof8:
+    forall A : Type, forall B : Type,
+    (A -> B) -> (B -> Bot) -> (A -> Bot).
+Proof.
+    intro A. intro B.
+    intro f. intro g.
+    intro a.
+    apply g.
+    apply f.
+    trivial.
+Qed.
