@@ -1,0 +1,11 @@
+Inductive N : Type :=
+    | Zero : N
+    | Succ : N -> N
+.
+Inductive eq : forall A : Type, A -> A -> Type :=
+    | refl : forall A : Type, forall x : A, eq A x x
+.
+Theorem eq_sym : forall A : Type, forall x : A, forall y : A, eq A x y -> eq A y x.
+Proof.
+    exact (eq_rec (fun (A:Type) (x:A) (y:A) (i:eq A x y) => eq A y x) refl).
+Qed.

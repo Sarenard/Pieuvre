@@ -53,7 +53,7 @@ and affiche_lam ty : string =
   | Pi("_", a, b) ->
     paren a ^ " -> " ^ sparen b
   | Pi(x, a, b) -> "(" ^ x ^ " : " ^ affiche_lam a ^ ") -> " ^ sparen b
-  | Func(x, a, b) -> "fun" ^ x ^ " : " ^ affiche_lam a ^ " => " ^ affiche_lam b
+  | Func(x, a, b) -> "fun " ^ x ^ " : " ^ affiche_lam a ^ " => " ^ affiche_lam b
   | App(a, b) -> sparen a ^ " " ^ paren b
   | Goal(_, a) -> "Goal(" ^ affiche_lam a ^ ")"
 ;;

@@ -58,8 +58,17 @@ constructor:
 /* PARTIE 6 : TERMS ************************************** */                                                         
 
 lambdaterm:
-  | FUN LPAREN x=VAR COLON t=lambdaterm RPAREN BIGARROW e=lambdaterm { Func(x, t, e) }
+  | FUN bs=fun_binders BIGARROW e=lambdaterm {
+      List.fold_right (fun (x, t) acc -> Func(x, t, acc)) bs e
+    }
   | pi_term { $1 }
+
+fun_binders:
+  | b=fun_binder { [b] }
+  | b=fun_binder bs=fun_binders { b :: bs }
+
+fun_binder:
+  | LPAREN x=VAR COLON t=lambdaterm RPAREN { (x, t) }
 
 pi_term:
   | FORALL x=VAR COLON a=lambdaterm COMMA b=pi_term { Pi(x, a, b) }

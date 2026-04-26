@@ -43,6 +43,12 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
       | Goal(k, ty) when k=i ->
         begin
           try 
+            (*
+            print_endline ("t = " ^ (affiche_lam t));
+            print_endline ("reduce t = " ^ (affiche_lam (reduce gamma t)));
+            print_endline ("ty = " ^ (affiche_lam ty));
+            print_endline ("infered t = " ^ (affiche_lam (infer gamma t)));
+            *)
             typecheck big_gamma t ty;
             t
           with Type_error -> goal

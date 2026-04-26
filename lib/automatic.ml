@@ -56,9 +56,9 @@ let automatic (content:string) : unit =
   print_endline (show_list show_statement elements);
   
   let rec handle_statements (gamma:context) (statements : statement list) =
-    print_endline "Context :";
+    (*print_endline "Context :";
     print_endline (show_context gamma);
-    print_newline ();
+    print_newline ();*)
     match statements with
     | STheorem(name, ty)::SProof(proof)::xs -> (
       let ok = check_theorem gamma ty proof in 
@@ -95,6 +95,7 @@ let automatic (content:string) : unit =
       in List.iteri handle_constructor constructors;
       (*we add the recursion principle to the environment with the good type*)
       let recursor = compute_recursor name arity constructors in
+      (*print_endline (affiche_lam recursor);*)
       new_env := { 
           gamma = (name ^ "_rec", recursor) :: (!new_env).gamma;
           inductive_types = (!new_env).inductive_types;

@@ -130,7 +130,7 @@ let compute_recursor name arity constructors =
   used_vars := prop_name::!used_vars;
   
   let arity_listified = listify used_vars arity in
-  print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") arity_listified);
+  (*print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") arity_listified);*)
 
   let new_name = get_new_name used_vars in 
   let conclusion = (
@@ -172,9 +172,9 @@ let compute_recursor name arity constructors =
 
   let handle_constructor (cname, constructor) = (
     let listified = listify used_vars constructor in
-    print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") listified);
+    (*print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") listified);*)
     let filtered = List.filter (fun (x, a) -> (last_app a) = Var(name)) listified in
-    print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") filtered);
+    (*print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") filtered);*)
     let instantiated_return = instantiate_return_type constructor listified in
     let p_call = (
       App(
