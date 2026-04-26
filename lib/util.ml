@@ -4,6 +4,9 @@ let parse_type (ty:string) : lambdaterm = Parser.main_term Lexer.token (Lexing.f
 let parse_tactic (ty:string) : tactic = Parser.main_tactic Lexer.token (Lexing.from_string ty);; 
 let parse_statements (ty:string) : statement list = Parser.main_statements Lexer.token (Lexing.from_string ty);; 
 
+(*
+Gets a list of the goals
+*)
 let get_goals (gamma:context) (term:lambdaterm) =
   let rec get_goals_aux (gamma:context) (term:lambdaterm) : (int * context * lambdaterm) list = 
     let gamma_var = gamma.gamma in
@@ -21,10 +24,13 @@ let get_goals (gamma:context) (term:lambdaterm) =
       | App(a, b) -> (get_goals_aux gamma a)@(get_goals_aux gamma b)
       | Goal(i, a) -> [(i, gamma, a)]
       | Inductive(_) -> []
-      | Constructor(_, _, _) -> []
+      | Constructor(_, _, lst) -> List.concat_map (get_goals_aux gamma) lst
     ) in get_goals_aux gamma term
 ;;
 
+(*
+numbers every goal
+*)
 let numerote (term:lambdaterm) : lambdaterm =
   let next = ref 1 in
   let rec dfs term =
@@ -43,6 +49,9 @@ let numerote (term:lambdaterm) : lambdaterm =
   dfs term
 ;;
 
+(*
+An helper function to run a func on every goal : searching the one we will replace with a tactic
+*)
 let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambdaterm =
   match term with
   | Var _ | Type -> term
@@ -65,6 +74,12 @@ let get_new_name used =
   var_name
 ;;
 
+(*
+Transforms a series of Pi-types into a list
+(A:Type) -> (x:A) -> (y:A) -> Type
+into
+[(A:Type), (x:A), (y:A)]
+*)
 let rec listify used = function
   | Pi(x, a, b) -> 
     let new_var = get_new_name used in
@@ -72,28 +87,61 @@ let rec listify used = function
   | _ -> [];
 ;;
 
+(*
+Transforms a series of applications into a list
+Ignores the first, transforms
+f x y
+into
+[y; x]
+*)
 let rec listify_app used = function
   | App(a, Var(x)) -> 
     x::(listify_app used a)
-  | Var(x) -> [];
   | _ -> [];
 ;;
 
+(*
+Gets the last item of a series of Pi-types
+(A:Type) -> (x:A) -> (y:A)
+into
+(y:A)
+*)
 let rec last_arrow = function
   | Pi(x, a, b) -> last_arrow b
   | ty -> ty
 ;;
 
+(*
+Gets the last item of a series of apps
+f x y
+into
+f
+*)
 let rec last_app = function
   | App(a, b) -> last_app a
   | ty -> ty
 ;;
 
+(*
+Replaces the last item of a series of apps
+last_app_change <term> (f x y)
+into
+<term> x y
+*)
 let rec last_app_change x = function
   | App(a, b) -> App(last_app_change x a, b)
   | ty -> x
 ;;
 
+(*
+Instantiate a Pi-typed term with a sequence of arguments.
+If the term is
+(A:Type) -> (x:A) -> eq A x x
+and the arguments are
+[(B:Type); (k:B)]
+then this returns
+eq B k k
+*)
 let rec instantiate_return_type term args =
   match term, args with
   | Pi(x, _, body), (name, _) :: rest ->
@@ -102,19 +150,32 @@ let rec instantiate_return_type term args =
   | ty, _ -> ty
 ;;
 
-(*
-RECURSOR OF FIN
-Check fin_ind.
-T_ind : 
-forall P : forall n : nat, T n -> Prop,
-P 0 a ->
-(forall (n m : nat) (t : T n) (t0 : T m),
-P n t -> P m t0 -> P (n + m) (b n m t t0)) ->
-forall (n : nat) (t : T n), P n t
-*)
 
+(*
+Computes the recursor of an inductive type
+If the inductive type is
+Inductive T : Arity :=
+  | Cons_1 : Signature_1 -> T <args_1>
+  ...
+  | Cons_n : Signature_n -> T <args_n>
+Then the recursor is* of the form
+(\*approximately of the form, this is intended to give an idea, not the full definition)
+forall P : ~Arity -> Type,
+(forall <Signature_1>, (P <args> when things in Signature_1 use T) -> P <args> (Cons_1 <args_1)) ->
+...
+(forall <Signature_n>, (P <args> when things in Signature_n use T) -> P <args> (Cons_n <args_n)) ->
+forall <Arity>, P <args>
+Some examples :
+for nat :
+(forall P : Nat -> Type, P 0 -> (forall n : N, P n -> P (S n)) -> forall n:N, P n)
+for eq:
+(forall P : forall (A : Type) (x y : A), eq A x y -> Type,
+  (forall (A : Type) (x : A), P A x x (refl A x)) ->
+forall (A : Type) (x y : A) (e : eq A x y), P A x y e)
+*)
 let compute_recursor name arity constructors = 
-  (*setup of the names*)
+  let debug = false in (*For debug purposes,*)
+  (*setup of the spoiled names*)
   let used_vars = ref [] in
   used_vars := name::!used_vars;
   let add_constr_name constrs =
@@ -130,7 +191,7 @@ let compute_recursor name arity constructors =
   used_vars := prop_name::!used_vars;
   
   let arity_listified = listify used_vars arity in
-  (*print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") arity_listified);*)
+  if debug then (print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") arity_listified););
 
   let new_name = get_new_name used_vars in 
   let conclusion = (
@@ -172,9 +233,9 @@ let compute_recursor name arity constructors =
 
   let handle_constructor (cname, constructor) = (
     let listified = listify used_vars constructor in
-    (*print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") listified);*)
+    if debug then (print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") listified););
     let filtered = List.filter (fun (x, a) -> (last_app a) = Var(name)) listified in
-    (*print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") filtered);*)
+    if debug then (print_endline (show_list (fun (x, a) -> "(" ^ x ^ ", " ^ affiche_lam a ^ ")") filtered););
     let instantiated_return = instantiate_return_type constructor listified in
     let p_call = (
       App(
@@ -187,7 +248,7 @@ let compute_recursor name arity constructors =
     ) in
     List.fold_left 
     (fun acc (name, ty) -> (Pi(name, ty, acc)))
-    (*This is the Pn in Pn -> Pn+1 inside of nats rec*)
+    (*This is the Pn in Pn -> Pn+1 inside of nats recursor, we need to suppose P of the inductive quantified elements*)
     (
       List.fold_left
       (fun acc (name, ty) ->
@@ -198,6 +259,7 @@ let compute_recursor name arity constructors =
     )
     (List.rev listified) 
   ) in
+  
   let body = 
     List.fold_left
     (fun acc constr -> Pi("_", handle_constructor constr, acc))

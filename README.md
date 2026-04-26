@@ -1,20 +1,13 @@
 # Pieuvre
 
-Commande pour lancer :
+Command to launch the interactive UI :
 
 ```bash
 dune build && rlwrap _build/default/bin/pieuvre.exe
 ```
 
-TODO :
+Command to run pieuvre on a file :
 
-
-
-Done :
-
-- Faire des tests
-- Implémenter la béta-réduction
-- Implémenter le typechecking
-- tactique exact
-- tactique intro
-- tactique trivial
+```bash
+dune build && rlwrap _build/default/bin/pieuvre.exe <filename>
+```

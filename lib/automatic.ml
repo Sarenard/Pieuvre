@@ -3,8 +3,8 @@ open Tactic
 open Expr
 
 let check_theorem (gamma : context) (theorem : lambdaterm) (proof : tactic list)
-(*TODO : make a better return type*)
-  : bool (*if the proof is correct, for now*) =
+(*Should we want more data in the return type ?*)
+  : bool (*returns if the proof is correct*) =
   let goal = theorem in
   let term = ref (Goal(0, theorem)) in
   let tactics = ref proof in
@@ -55,16 +55,19 @@ let automatic (content:string) : unit =
   let elements = parse_statements content in
   print_endline (show_list show_statement elements);
   
+  (*
+  Handles every statement or family of statements
+  and puts the result (theorem, type, definition...) in the context
+  *)
   let rec handle_statements (gamma:context) (statements : statement list) =
-    (*print_endline "Context :";
-    print_endline (show_context gamma);
-    print_newline ();*)
     match statements with
+    (*A theorem needs a proof*)
     | STheorem(name, ty)::SProof(proof)::xs -> (
       let ok = check_theorem gamma ty proof in 
       if not ok then failwith ("Proof of theorem " ^ name ^ " is incorrect !");
-      (*We continue the execution*)
+      (*We continue and add the theorem to the context*)
       let new_env = { gamma with gamma = (name, ty) :: gamma.gamma } in
+      (*We continue the execution*)
       handle_statements new_env xs;
     )
     
@@ -72,7 +75,6 @@ let automatic (content:string) : unit =
       (*
         TODO : We will later need to check if the inductive is small or big (when we will have universes)
         see https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf page 10 (337)
-        TODO : gérer les types du style option nat dans nat (ie les inductifs dans les inductifs dans la positivité)
         *)
       let new_env = ref gamma in
       (*we check that the inductive type is correct and add it to the env*)
@@ -83,7 +85,7 @@ let automatic (content:string) : unit =
         inductive_types = (!new_env).inductive_types @ [(name, arity, constructors)];
         values = (name, Inductive(i)) :: (!new_env).values;
       };
-      (*we add constructors to the environment with the good type*)
+      (*we add constructors to the environment with the good type and value*)
       let handle_constructor j (name, ty) = (
         let new_var = (name, Constructor(i, j, [])) in
         new_env := { 
@@ -95,7 +97,6 @@ let automatic (content:string) : unit =
       in List.iteri handle_constructor constructors;
       (*we add the recursion principle to the environment with the good type*)
       let recursor = compute_recursor name arity constructors in
-      (*print_endline (affiche_lam recursor);*)
       new_env := { 
           gamma = (name ^ "_rec", recursor) :: (!new_env).gamma;
           inductive_types = (!new_env).inductive_types;

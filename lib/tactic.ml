@@ -2,6 +2,7 @@ open Expr
 open Util
 
 (*
+This is the function that handles tactics
 gamma : context of the goal
 gamma' : context of the theorem
 *)
@@ -20,14 +21,14 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
     | Some(_) -> failwith ("Cannot intro here, variable " ^ x ^ " already taken")
     | None -> (
       let replace_goal goal = (match goal with
+        (*non dependant introduction*)
         | Goal(k, Pi("_", a, b)) when k=i -> Func(x, a, Goal(k, b))
-        (*dependant*)
+        (*dependant introduction*)
         | Goal(k, Pi(var, a, b)) when k=i -> Func(x, a, Goal(k, replace b var (Var x)))
         | _ -> goal
       ) in run_replace term replace_goal
     )
   )
-  (*TODO : faire ça avec de l'unification*)
   | Trivial -> let replace_goal goal = (match goal with
       | Goal(k, ty) when i=k -> 
         begin
@@ -43,19 +44,20 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
       | Goal(k, ty) when k=i ->
         begin
           try 
-            (*
-            print_endline ("t = " ^ (affiche_lam t));
-            print_endline ("reduce t = " ^ (affiche_lam (reduce gamma t)));
-            print_endline ("ty = " ^ (affiche_lam ty));
-            print_endline ("infered t = " ^ (affiche_lam (infer gamma t)));
-            *)
+            (*TODO : remove this because we have a better system of error handling !*)
+            let debug = false in
+            if debug then (
+              print_endline ("t = " ^ (affiche_lam t));
+              print_endline ("reduce t = " ^ (affiche_lam (reduce gamma t)));
+              print_endline ("ty = " ^ (affiche_lam ty));
+              print_endline ("infered t = " ^ (affiche_lam (infer gamma t)));
+            );
             typecheck big_gamma t ty;
             t
           with Type_error -> goal
         end
       | _ -> goal
     ) in run_replace term replace_goal
-  (*TODO : add apply but for constructors too*)
   | Apply(x) -> let replace_goal goal =
       match goal with
       | Goal(k, ty) when k = i -> (
@@ -66,9 +68,8 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
             match fty with
             | _ when equiv big_gamma fty ty -> Some (List.rev args)
             | Pi(arg, a, b) ->
-              (*we put back numbers after so its okay to put them as 0*)
+              (*we put back numbers after so its okay to put them as 0 for now*)
               let new_goal = Goal(0, a) in
-              (*Dependant types so we need to replace*)
               (*TODO : do this but properly with unification*)
               (* Zoe said :
                 dans une implémentation propre de apply tu remplaces le replace par une unification

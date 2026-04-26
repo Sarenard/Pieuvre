@@ -2,6 +2,12 @@ open Expr
 open Util
 open Tactic
 
+(*
+Shows the context as a neat list
+a : A
+...
+n : N
+*)
 let affiche_context (gamma:context) : unit =
   List.iter
     (fun (x, ty) ->
@@ -12,6 +18,14 @@ let affiche_context (gamma:context) : unit =
     (List.rev gamma.gamma)
 ;;
 
+(*
+The interactive UI
+An example :
+n : N
+N : Type
+=================
+eq N n n
+*)
 let affiche_goal (_i, gamma, ty) : unit =
   print_newline ();
   print_string "Goal :";
@@ -22,6 +36,9 @@ let affiche_goal (_i, gamma, ty) : unit =
   print_endline (affiche_lam ty);
 ;;
 
+(*
+Runs one step of the loop "show the UI" + "asks for a tactic"
+*)
 let interactive_step (term:lambdaterm) 
 : (lambdaterm * bool) (*(term, should we continue)*) = 
   let term = numerote term in
@@ -43,7 +60,7 @@ let interactive_step (term:lambdaterm)
   | Some(goal) -> (
     let lexbuf = Lexing.from_string input in
     let tactic = Parser.main_tactic Lexer.token lexbuf in
-    print_string "Tactique : ";
+    print_string "Tactic : ";
     print_string (show_tactic tactic);
     print_newline ();
     let return_term = handle_tactic goal empty_env term tactic in
@@ -54,6 +71,9 @@ let interactive_step (term:lambdaterm)
   )
 ;;
 
+(*
+The main loop, we continue until we get a Qed.
+*)
 let interactive () : unit = 
   print_string "Goal : ";
   let input = read_line () in
@@ -73,7 +93,7 @@ let interactive () : unit =
   (*We finished*)
   (*We reduce the witness*)
   current := reduce empty_env !current;
-  (*We show a cool message*)
+  (*We show a cool message because we prooved the goal*)
   print_newline ();
   print_endline "No goals remaining.";
   print_endline "Witness of the proof :";

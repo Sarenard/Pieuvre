@@ -23,13 +23,7 @@ type lambdaterm =
 [@@deriving show]
 ;;
 
-let rec affiche_lam_list = function
-  | [] -> ""
-  | [t] -> affiche_lam t
-  | t :: q ->
-    affiche_lam t ^ "; " ^ affiche_lam_list q
-
-and affiche_lam ty : string = 
+let rec affiche_lam ty : string = 
   let prec = function
     | Var _ | Type | Inductive(_) | Constructor(_, _, _) | Goal(_) -> 10
     | App(_, _) -> 5
@@ -49,7 +43,7 @@ and affiche_lam ty : string =
   | Inductive nb ->
     "<Inductive(" ^ string_of_int nb ^ ")>";
   | Constructor(a, b, lt) ->
-    "<Constructor(" ^ string_of_int a ^ ", " ^ string_of_int b ^ ", [" ^ affiche_lam_list lt ^ "])>";
+    "<Constructor(" ^ string_of_int a ^ ", " ^ string_of_int b ^ ", [" ^ (String.concat "; " (List.map affiche_lam lt)) ^ "])>"
   | Pi("_", a, b) ->
     paren a ^ " -> " ^ sparen b
   | Pi(x, a, b) -> "(" ^ x ^ " : " ^ affiche_lam a ^ ") -> " ^ sparen b
@@ -58,9 +52,11 @@ and affiche_lam ty : string =
   | Goal(_, a) -> "Goal(" ^ affiche_lam a ^ ")"
 ;;
 
+(*
+We shadow the functions defined by the ppx show
+*)
 let pp_lambdaterm fmt t =
   Format.pp_print_string fmt (affiche_lam t)
-
 let show_lambdaterm t =
   Format.asprintf "%a" pp_lambdaterm t
 
@@ -76,7 +72,6 @@ type tactic =
 type constructor = (string * lambdaterm)
 [@@deriving show]
 ;;
-
 
 type inductive_type = (string * lambdaterm * constructor list)
 [@@deriving show]
@@ -104,6 +99,9 @@ type statement =
 [@@deriving show]
 ;;
 
+(*
+Checks alpha-equivalence
+*)
 let alpha term1 term2 =
   let rec alpha_aux env12 env21 term1 term2 =
     match (term1, term2) with
@@ -133,7 +131,9 @@ let alpha term1 term2 =
   alpha_aux [] [] term1 term2
 ;;
 
-
+(*
+gets all of the bound variables of a term
+*)
 let rec free_and_bound term bound = match term with
   | Var s -> if List.mem s bound then ([], bound) else ([s], bound)
   | Func(s, ty, body) -> 
@@ -160,6 +160,10 @@ let rec free_and_bound term bound = match term with
       args
 ;;
 
+(*
+Generates a fresh variable (trying to match the name v)
+x0 -> xi with i the smallest so that it is not taken
+*)
 let get_fresh v lst =
   let len = String.length v in
   (* Find the index where digits start *)
@@ -182,6 +186,9 @@ let get_fresh v lst =
     else candidate
   in find number
 
+(*
+replaces x with x' in term
+*)
 let rec replace term x x' = match term with
   | Var s -> if s = x then x' else Var s
   | Func(s, ty, body) -> 
@@ -215,6 +222,11 @@ let rec replace term x x' = match term with
   | Constructor(i, j, args) ->
     Constructor(i, j, List.map (fun arg -> replace arg x x') args)
 
+
+(*
+Does one step of a beta-reduction
+Do we want to go with a big steps approach?
+*)
 let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
   match term with
   | Var _ -> None
@@ -269,6 +281,9 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
       | None -> None)
 ;;
 
+(*
+Full beta reduction
+*)
 let rec reduce (ctx:context) term : lambdaterm =
   let newterm = betastep ctx term in
   match newterm with
@@ -276,22 +291,35 @@ let rec reduce (ctx:context) term : lambdaterm =
     | None -> term
 ;;
 
+(*
+Alpha-beta equivalence
+*)
 let equiv (ctx:context) a b = 
   alpha (reduce ctx a) (reduce ctx b)
 ;;
 
+(*
+We keep that becaue it is easier to give an empty env
+and so that we have it if one day we need to have things in the empty_env
+*)
 let empty_env = { gamma = []; inductive_types = []; values = []};;
 
 exception Type_error;;
 exception Unexpected_goal;;
 exception Unbound_variable of string;;
 
-(*we will need to change that with universes*)
+(*
+This checks if something is of type Type
+  we will need to change that when we will handle universes
+*)
 let rec check_is_type gamma ty =
   match reduce gamma (infer gamma ty) with
   | Type -> ()
   | _ -> raise Type_error
 
+(*
+this takes a term and returns its type
+*)
 and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   let gamma_var = gamma.gamma in
   let gamma_ind = gamma.inductive_types in
@@ -321,7 +349,7 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
       typecheck gamma t a;
       reduce gamma (replace b x t)
     | _ -> 
-      print_endline "Erreur de type dans un app";
+      print_endline "Type error in an app";
       raise Type_error;
   )
   | Inductive(_) ->
@@ -329,6 +357,10 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   | Constructor(_) ->
     assert false;
 
+(*
+Checks that the type of term is ~_alpha-beta to ty
+does nothing or raises an error
+*)
 and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
   let type_of_term = infer gamma term in
   if equiv gamma type_of_term ty then
@@ -337,6 +369,9 @@ and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
     raise Type_error
 ;;
 
+(*
+Check whether name occurs free in term.
+*)
 let rec occurs_bound bound name term =
   match term with
   | Var x -> x = name && not (List.mem x bound)
@@ -353,6 +388,9 @@ let rec occurs_bound bound name term =
 ;;
 
 (*https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf*)
+(*
+This takes an inductive type (destructed) and checks its wellformedness
+*)
 let check_wellformed_inductive (name:string) (gamma:context) (arity:lambdaterm) (constructors:constructor list) : unit =
   let gamma_var = gamma.gamma in
   let gamma_ind = gamma.inductive_types in

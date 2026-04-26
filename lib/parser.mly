@@ -2,7 +2,12 @@
   open Expr
 %}
 
-/* PARTIE 2, on liste les lexèmes (lien avec le fichier lexer.mll) ******* */                                   
+(*
+TODO : some error recovery / indications
+*)
+
+/* PART 1 : LEXEMES ******* */                                   
+/*GENERAL*/
 %token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA
 /*TACTICS*/
 %token INTRO TRIVIAL EXACT DOT QED APPLY
@@ -11,11 +16,10 @@
 %token <int> INT       /* le lexème INT a un attribut entier */
 %token <string> VAR
 
-/* PARTIE 3, on donne les associativités et on classe les priorités *********** */
-/* priorité plus grande sur une ligne située plus bas */
-%right SMALLARROW
+/* PART 2, PRIORITIES *********** */
+/* (higher = smaller priority) */
 
-/* PARTIE 4, les points d'entrée ******************************************* */
+/* PART 3, ACCESS POINTS ******************************************* */
 %start main_term
 %type <Expr.lambdaterm> main_term
 
@@ -36,7 +40,7 @@ main_statements:
 main_tactic:
   | t = tactic_dot EOF { t }
 
-/* PARTIE 5 : STATEMENTS ************************************** */                                                         
+/* PART 4 : STATEMENTS ************************************** */                                                         
 
 statement: 
   | THEOREM name=VAR COLON t=lambdaterm DOT {STheorem(name, t)}
@@ -55,7 +59,7 @@ statement:
 constructor:
   | PIPE name=VAR COLON ty=lambdaterm {(name, ty)} 
 
-/* PARTIE 6 : TERMS ************************************** */                                                         
+/* PARTIE 5 : TERMS ************************************** */                                                         
 
 lambdaterm:
   | FUN bs=fun_binders BIGARROW e=lambdaterm {
@@ -85,7 +89,7 @@ atom:
   | GOAL LPAREN t=lambdaterm RPAREN { Goal(0, t) }
   | LPAREN t=lambdaterm RPAREN { t }
 
-/* PARTIE 7 : TACTICS ************************************** */                                                         
+/* PARTIE 6 : TACTICS ************************************** */                                                         
 
 tactic_dot:
   | tactic DOT { $1 }
