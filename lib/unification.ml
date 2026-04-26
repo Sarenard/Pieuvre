@@ -68,22 +68,22 @@ let rec delta_sigma_reduce_weak_t (lt1:lt) (lt2:lt) : bool =
 (*
 Computes the \delta\Sigma^weak reduction of lt1 in the context mctx
 *)
-let delta_sigma_reduce (lt1 : lt) (mctx : mcontext) : lt =
+let delta_sigma_reduce (mctx : mcontext) (lt1 : lt) : lt option =
   match lt1 with
-  | Mvar i ->
-    (match Hashtbl.find_opt mctx.values i with
-    | Some v -> v
-    | None -> lt1)
-  | _ -> lt1
+  | Mvar i -> Hashtbl.find_opt mctx.values i
+  | _ -> None
 ;;
 
 (*
 Computes the \delta\Sigma^weak reduction of lt1
 *)
-let rec delta_sigma_reduce_weak (lt1:lt) : lt =
+let rec delta_sigma_reduce_weak (mctx : mcontext) (lt1:lt) : lt option =
   match lt1 with
-  | App(t, u) -> App(delta_sigma_reduce_weak t, u)
-  | _ -> delta_sigma_reduce lt1 empty_mcontext
+  | App(t, u) -> 
+    (match delta_sigma_reduce_weak mctx t with
+    | Some(t') -> Some(App(t', u))
+    | None -> None)
+  | _ -> delta_sigma_reduce mctx lt1
 ;;
 
 exception UnificationError of lt*lt;;
@@ -115,16 +115,35 @@ let rec unify (sigma0:mcontext) (lenv:lcontext) (e1:lt) (e2:lt) : mcontext =
     let sigma1 = unify sigma0 lenv t1 u1 in
     let sigma2 = unify sigma1 ((fresh, t1)::lenv) t2' u2' in
     sigma2 
-  (*APP-FO*)
-  | (App(t, tn), App(u, un)) ->
-    failwith "TODO";
-  (*TODO : META-\deltaR*)
-  (*TODO : META-\deltaL*)
-  (*TODO : META-SAME*)
-  (*TODO : META-INSTR*)
-  (*TODO : META-INSTL*)
-  (*we didnt succeed the unification, we raise an error*)
-  | _ -> raise (UnificationError(e1, e2))
+  | e1, e2 ->
+    let head1, tail1 = uncons (linearize e1) in
+    let head2, tail2 = uncons (linearize e2) in
+
+    (*We try to META-delta(L/R) reduce*)
+    match delta_sigma_reduce_weak sigma0 head1, delta_sigma_reduce_weak sigma0 head2 with
+      | Some head1, Some head2 ->
+        unify sigma0 lenv (delinearize head1 tail1) (delinearize head2 tail2)
+      | Some head1, None ->
+        unify sigma0 lenv (delinearize head1 tail1) e2
+      | None, Some head2 ->
+        unify sigma0 lenv e1 (delinearize head2 tail2)
+      | None, None ->
+        (*META-SAME or META-INST(R/L) or app_fo depending*)
+        match head1, head2 with
+        (*META-SAME*)
+        | Mvar i, Mvar j when i = j ->
+          failwith "TODO";
+        (*META-INST-L*)
+        | Mvar i, t ->
+          failwith "TODO";
+        (*META-INST-R*)
+        | t, Mvar i ->
+          failwith "TODO";
+        (*APP-FO*)
+        | _, _ ->
+          let sigma1 = unify sigma0 lenv head1 head2 in
+          (*We need to compress the combs so they have the same length*)
+          failwith "TODO";
 ;;
 
 let test menv lenv e1 e2 = 
@@ -134,6 +153,8 @@ let test menv lenv e1 e2 =
   with
   | UnificationError(e1, e2) ->
     print_endline ("Failed to unify " ^ show_lt e1 ^ " and " ^ show_lt e2);
+  | Failure msg ->
+    print_endline ("Failure while unifying " ^ show_lt e1 ^ " and " ^ show_lt e2 ^ ": " ^ msg);
   ;
 ;;
 
@@ -160,4 +181,10 @@ let unify_run () =
   test empty_mcontext []
     (Func("x", Type, Var("x")))
     (Func("y", Type, Var("z")));
+  test empty_mcontext []
+    (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
+    (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x4")));
+  test empty_mcontext []
+    (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
+    (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")));
 ;;

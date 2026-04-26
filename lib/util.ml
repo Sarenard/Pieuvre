@@ -135,6 +135,34 @@ let rec last_app_change x = function
 ;;
 
 (*
+transforms a term into a list
+f x y z 
+into 
+[f; x; y; z]
+*)
+let rec linearize = function
+  | App(x, y) -> (linearize x)@[y]
+  | ty -> [ty]
+;;
+
+(*
+transforms a head and a list of arguments into a term
+f and [x; y; z]
+into
+f x y z
+*)
+let delinearize head lst =
+  List.fold_left (fun acc arg -> App(acc, arg)) head lst
+;;
+
+(*
+transforms a list into its head and tail
+*)
+let uncons = function
+  | [] -> failwith "Empty list in uncons"
+  | x::xs -> (x, xs)
+
+(*
 Instantiate a Pi-typed term with a sequence of arguments.
 If the term is
 (A:Type) -> (x:A) -> eq A x x
