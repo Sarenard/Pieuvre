@@ -154,6 +154,10 @@ f x y z
 let delinearize head lst =
   List.fold_left (fun acc arg -> App(acc, arg)) head lst
 ;;
+let delinearize_list = function
+  | [] -> failwith "empty list in delinearize_list"
+  | head :: tail -> delinearize head tail
+;;
 
 (*
 transforms a list into its head and tail
@@ -161,6 +165,53 @@ transforms a list into its head and tail
 let uncons = function
   | [] -> failwith "Empty list in uncons"
   | x::xs -> (x, xs)
+;;
+
+(*
+splits a list at an integer
+split 3 [1;2;3;4;5]
+evaluates to
+[1;2;3] [4;5]
+*)
+let split_at n lst =
+  let rec aux i acc rest =
+    if i <= 0 then
+      (List.rev acc, rest)
+    else
+      match rest with
+      | [] -> (List.rev acc, [])
+      | x :: xs -> aux (i - 1) (x :: acc) xs
+  in
+  aux n [] lst
+;;
+
+(*
+Regroups the longer application comb so both lists have the same length
+regroup [f; x; y; z] [a; b]
+evaluates to
+([f x y; z], [a; b])
+*)
+let regroup list1 list2 =
+  let len1 = List.length list1 in
+  let len2 = List.length list2 in
+
+  if len1 > len2 then
+    let left, right = split_at (len1 - len2 + 1) list1 in
+    let left_head, left_tail = uncons left in
+    let regrouped = delinearize left_head left_tail in
+    match right with
+    | [] -> ([regrouped], list2)
+    | r :: rs -> (regrouped :: r :: rs, list2)
+  else if len2 > len1 then
+    let left, right = split_at (len2 - len1 + 1) list2 in
+    let left_head, left_tail = uncons left in
+    let regrouped = delinearize left_head left_tail in
+    match right with
+    | [] -> (list1, [regrouped])
+    | r :: rs -> (list1, regrouped :: r :: rs)
+  else
+    (list1, list2)
+;;
 
 (*
 Instantiate a Pi-typed term with a sequence of arguments.

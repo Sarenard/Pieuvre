@@ -139,11 +139,20 @@ let rec unify (sigma0:mcontext) (lenv:lcontext) (e1:lt) (e2:lt) : mcontext =
         (*META-INST-R*)
         | t, Mvar i ->
           failwith "TODO";
+        | _, _ when tail1 = [] || tail2 = [] ->
+          raise (UnificationError(e1, e2));
         (*APP-FO*)
         | _, _ ->
-          let sigma1 = unify sigma0 lenv head1 head2 in
           (*We need to compress the combs so they have the same length*)
-          failwith "TODO";
+          let list1, list2 = regroup (head1 :: tail1) (head2 :: tail2) in
+          let head1, tail1 = uncons list1 in
+          let head2, tail2 = uncons list2 in
+          let sigma1 = unify sigma0 lenv head1 head2 in
+          match tail1, tail2 with
+          | [], [] -> sigma1
+          | [], _ -> raise (UnificationError(head1, delinearize_list list2))
+          | _, [] -> raise (UnificationError(delinearize_list list1, head2))
+          | _, _ -> unify sigma1 lenv (delinearize_list tail1) (delinearize_list tail2)
 ;;
 
 let test menv lenv e1 e2 = 
@@ -187,4 +196,7 @@ let unify_run () =
   test empty_mcontext []
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")));
+  test empty_mcontext []
+    (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
+    (App(App(Var("f"), Var("x1")), Var("x2")));
 ;;
