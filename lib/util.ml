@@ -230,7 +230,6 @@ let rec instantiate_return_type term args =
   | ty, _ -> ty
 ;;
 
-
 (*
 Computes the recursor of an inductive type
 If the inductive type is

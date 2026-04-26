@@ -10,10 +10,13 @@ type mcontext = {
 }
 ;;
 
-let empty_mcontext : mcontext = {
+let fresh_mcontext () : mcontext = {
   values = Hashtbl.create 16;
   types = Hashtbl.create 16;
 }
+;;
+
+let empty_mcontext : mcontext = fresh_mcontext ()
 ;;
 
 type lcontext = (string * lt) list
@@ -46,7 +49,7 @@ let show_mcontext ctx =
 Returns if lt1 \delta\Sigma reduces in lt2 in the context mctx
 *)    
 let delta_sigma_reduce_t (lt1:lt) (lt2:lt) (mctx : mcontext) : bool =
-  match lt2 with
+  match lt1 with
   | Mvar(i) -> has_binding (mctx.values) i lt2
   | _ -> failwith "Wrong left argument for delta_sigma_reduce"
 ;;
@@ -88,12 +91,38 @@ let rec delta_sigma_reduce_weak (mctx : mcontext) (lt1:lt) : lt option =
 
 exception UnificationError of lt*lt;;
 
+let rec occurs_mvar (i : int) (term : lt) : bool =
+  match term with
+  | Mvar j -> i = j
+  | Var _ | Type | Inductive _ -> false
+  | Goal(_, t) -> occurs_mvar i t
+  | App(t1, t2) -> occurs_mvar i t1 || occurs_mvar i t2
+  | Pi(_, t1, t2)
+  | Func(_, t1, t2) -> occurs_mvar i t1 || occurs_mvar i t2
+  | Constructor(_, _, args) -> List.exists (occurs_mvar i) args
+;;
+
+let instantiate_meta (sigma : mcontext) (i : int) (term : lt) : mcontext =
+  match term with
+  | Mvar j when i = j -> sigma
+  | _ ->
+    if occurs_mvar i term then
+      raise (UnificationError(Mvar(i), term));
+    Hashtbl.replace sigma.values i term;
+    sigma
+;;
+
+(*
+based on https://www.cambridge.org/core/services/aop-cambridge-core/content/view/19A095CA0645F89A772B7E2B7B3D92B2/S0956796817000028a.pdf/a-comprehensible-guide-to-a-new-unifier-for-cic-including-universe-polymorphism-and-overloading.pdf
+but for now its too complicated
+we go back to an easier unification algorithm
+*)
 let rec unify (sigma0:mcontext) (lenv:lcontext) (e1:lt) (e2:lt) : mcontext =
   match (e1, e2) with
   (*TYPE-SAME*)
   | (Type, Type) -> sigma0
   (*VAR-SAME*)
-  (*RIGID-SAME*) (*we dont use E right now, we*)
+  (*RIGID-SAME*) (*we dont use E right now*)
   | (Var(x), Var(y)) ->
     if x <> y then raise (UnificationError(e1, e2));
     sigma0
@@ -114,45 +143,18 @@ let rec unify (sigma0:mcontext) (lenv:lcontext) (e1:lt) (e2:lt) : mcontext =
     (*we compute the new mcontext*)
     let sigma1 = unify sigma0 lenv t1 u1 in
     let sigma2 = unify sigma1 ((fresh, t1)::lenv) t2' u2' in
-    sigma2 
-  | e1, e2 ->
-    let head1, tail1 = uncons (linearize e1) in
-    let head2, tail2 = uncons (linearize e2) in
-
-    (*We try to META-delta(L/R) reduce*)
-    match delta_sigma_reduce_weak sigma0 head1, delta_sigma_reduce_weak sigma0 head2 with
-      | Some head1, Some head2 ->
-        unify sigma0 lenv (delinearize head1 tail1) (delinearize head2 tail2)
-      | Some head1, None ->
-        unify sigma0 lenv (delinearize head1 tail1) e2
-      | None, Some head2 ->
-        unify sigma0 lenv e1 (delinearize head2 tail2)
-      | None, None ->
-        (*META-SAME or META-INST(R/L) or app_fo depending*)
-        match head1, head2 with
-        (*META-SAME*)
-        | Mvar i, Mvar j when i = j ->
-          failwith "TODO";
-        (*META-INST-L*)
-        | Mvar i, t ->
-          failwith "TODO";
-        (*META-INST-R*)
-        | t, Mvar i ->
-          failwith "TODO";
-        | _, _ when tail1 = [] || tail2 = [] ->
-          raise (UnificationError(e1, e2));
-        (*APP-FO*)
-        | _, _ ->
-          (*We need to compress the combs so they have the same length*)
-          let list1, list2 = regroup (head1 :: tail1) (head2 :: tail2) in
-          let head1, tail1 = uncons list1 in
-          let head2, tail2 = uncons list2 in
-          let sigma1 = unify sigma0 lenv head1 head2 in
-          match tail1, tail2 with
-          | [], [] -> sigma1
-          | [], _ -> raise (UnificationError(head1, delinearize_list list2))
-          | _, [] -> raise (UnificationError(delinearize_list list1, head2))
-          | _, _ -> unify sigma1 lenv (delinearize_list tail1) (delinearize_list tail2)
+    sigma2
+  | Mvar i, Mvar j when i = j ->
+    sigma0
+  | Mvar i, t ->
+    instantiate_meta sigma0 i t
+  | t, Mvar i ->
+    instantiate_meta sigma0 i t
+  | App(f1, a1), App(f2, a2) ->
+    let sigma1 = unify sigma0 lenv f1 f2 in
+    unify sigma1 lenv a1 a2
+  | _, _ ->
+    raise (UnificationError(e1, e2))
 ;;
 
 let test menv lenv e1 e2 = 
@@ -169,34 +171,36 @@ let test menv lenv e1 e2 =
 
 (*for tests*)
 let unify_run () = 
-  test empty_mcontext [] Type Type; 
-  test empty_mcontext [] (Var("x")) (Var("y")); 
-  test empty_mcontext [] (Var("x")) (Var("x")); 
-  test empty_mcontext []
+  test (fresh_mcontext ()) [] Type Type; 
+  test (fresh_mcontext ()) [] (Var("x")) (Var("y")); 
+  test (fresh_mcontext ()) [] (Var("x")) (Var("x")); 
+  test (fresh_mcontext ()) []
     (Pi("x", Type, Var("x")))
     (Pi("y", Type, Var("y")));
-  test empty_mcontext []
+  test (fresh_mcontext ()) []
     (Pi("x", Type, Type))
     (Pi("y", Type, Type));
-  test empty_mcontext []
+  test (fresh_mcontext ()) []
     (Pi("x", Type, Var("x")))
     (Pi("y", Type, Var("z")));
-  test empty_mcontext []
+  test (fresh_mcontext ()) []
     (Func("x", Type, Var("x")))
     (Func("y", Type, Var("y")));
-  test empty_mcontext []
+  test (fresh_mcontext ()) []
     (Func("x", Type, Type))
     (Func("y", Type, Type));
-  test empty_mcontext []
+  test (fresh_mcontext ()) []
     (Func("x", Type, Var("x")))
     (Func("y", Type, Var("z")));
-  test empty_mcontext []
+  test (fresh_mcontext ()) []
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x4")));
-  test empty_mcontext []
+  test (fresh_mcontext ()) []
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")));
-  test empty_mcontext []
+  test (fresh_mcontext ()) []
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
     (App(App(Var("f"), Var("x1")), Var("x2")));
+  test (fresh_mcontext ()) [] (Mvar(0)) (Mvar(1));
+  test (fresh_mcontext ()) [] (Mvar(2)) (App(Var("f"), Var("x")));
 ;;
