@@ -14,6 +14,7 @@ let get_goals (gamma:context) (term:lambdaterm) =
     let gamma_val = gamma.values in (
       match term with
       | Var(_x) -> []
+      | Mvar(_x) -> []
       | Type -> []
       | Pi(x, a, b) -> 
         let new_env = { gamma = (x, a) :: gamma_var; inductive_types = gamma_ind ; values = gamma_val} in
@@ -35,7 +36,7 @@ let numerote (term:lambdaterm) : lambdaterm =
   let next = ref 1 in
   let rec dfs term =
     match term with
-    | Var _ | Type -> term
+    | Var _ | Type | Mvar _ -> term
     | Goal (_, a) ->
         let i = !next in
         incr next;
@@ -54,7 +55,7 @@ An helper function to run a func on every goal : searching the one we will repla
 *)
 let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambdaterm =
   match term with
-  | Var _ | Type -> term
+  | Var _ | Type | Mvar _ -> term
   | Goal (_i, _a) -> func term
   | Pi (x, a, b) -> Pi (x, run_replace a func, run_replace b func)
   | Func (x, a, b) -> Func (x, run_replace a func, run_replace b func)
@@ -273,3 +274,11 @@ let compute_recursor name arity constructors =
     body
   )
 ;;
+
+(*
+Checks if (ind, v) is in tbl
+*)
+let has_binding tbl ind v =
+  match Hashtbl.find_opt tbl ind with
+  | Some v' -> v' = v
+  | None -> false

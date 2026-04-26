@@ -1,3 +1,8 @@
+type mvar = int
+[@@deriving show]
+;;
+
+(*TODO : separate the kernel and the userlevel lambdaterms so that the kernel can be pure*)
 type lambdaterm =
   (*Variables*)
   | Var of string
@@ -20,12 +25,15 @@ type lambdaterm =
   (*indice dans la liste des inductifs, id_constru, (liste des args du constructeur)*)
   | Constructor of int * int * lambdaterm list
 
+  (*Unification*)
+  | Mvar of mvar (*?x*)
+
 [@@deriving show]
 ;;
 
 let rec affiche_lam ty : string = 
   let prec = function
-    | Var _ | Type | Inductive(_) | Constructor(_, _, _) | Goal(_) -> 10
+    | Var _ | Type | Inductive(_) | Constructor(_, _, _) | Goal(_) | Mvar _ -> 10
     | App(_, _) -> 5
     | Pi(_, _, _) -> 3
     | Func(_, _, _) -> 1
@@ -39,6 +47,7 @@ let rec affiche_lam ty : string =
   in
   match ty with
   | Var(x) -> x
+  | Mvar(i) -> "(?" ^ string_of_int i ^ ")"
   | Type -> "Type"
   | Inductive nb ->
     "<Inductive(" ^ string_of_int nb ^ ")>";
@@ -77,6 +86,7 @@ type inductive_type = (string * lambdaterm * constructor list)
 [@@deriving show]
 ;;
 
+(*TODO : separate gamma into local env and global env*)
 type context = {
   gamma : (string * lambdaterm) list;
   values : (string * lambdaterm) list;
@@ -148,8 +158,9 @@ let rec free_and_bound term bound = match term with
     let (f1, b1) = free_and_bound t1 bound in
     let (f2, b2) = free_and_bound t2 bound in
     (f1 @ f2, b1 @ b2)
-  | Goal(_, goal) -> free_and_bound goal bound
+    | Goal(_, goal) -> free_and_bound goal bound
   | Type -> ([], bound)
+  | Mvar(_) -> ([], bound)
   | Inductive(_) -> ([], bound) 
   | Constructor(_, _, args) ->
     List.fold_left
@@ -191,6 +202,7 @@ replaces x with x' in term
 *)
 let rec replace term x x' = match term with
   | Var s -> if s = x then x' else Var s
+  | Mvar _ -> term
   | Func(s, ty, body) -> 
     if s = x then Func(s, replace ty x x', body)
     else (
@@ -216,9 +228,9 @@ let rec replace term x x' = match term with
       ) else Pi(s, replace ty x x', replace body x x')
     )
   | App(t1, t2) -> App(replace t1 x x', replace t2 x x')
-  | Type -> Type
+  | Type -> term
   | Goal(i, tm) -> Goal(i, replace tm x x')
-  | Inductive(i) -> Inductive(i)
+  | Inductive(i) -> term
   | Constructor(i, j, args) ->
     Constructor(i, j, List.map (fun arg -> replace arg x x') args)
 
@@ -230,6 +242,7 @@ Do we want to go with a big steps approach?
 let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
   match term with
   | Var _ -> None
+  | Mvar _ -> None
   | Type -> None
   | Inductive(i) -> None
   | Constructor(i, j, args) ->
@@ -331,6 +344,7 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   )
   (*This will cause problems but for now it is totally fine : we ignore universes*)
   | Type -> Type
+  | Mvar _ -> failwith "We dont want a Mvar here";
   | Goal(_, _a) -> raise Unexpected_goal;
   | Pi(x, a, b) -> 
     let new_context = { gamma = (x, a) :: gamma_var; inductive_types = gamma_ind; values = gamma_val } in
@@ -376,6 +390,7 @@ let rec occurs_bound bound name term =
   match term with
   | Var x -> x = name && not (List.mem x bound)
   | Type -> false
+  | Mvar _ -> false
   | Inductive(i) -> false
   | Constructor(i, j, args) -> List.exists (occurs_bound bound name) args
   | Goal (_, a) -> occurs_bound bound name a
