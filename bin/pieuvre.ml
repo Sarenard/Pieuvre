@@ -19,7 +19,7 @@ let run () =
     | "" -> (
       unify_run ();
       (*Interactive UI*)
-      (*interactive ();*)
+      interactive ();
     )
     | filename -> 
       (*We treat the given file linearly*)
