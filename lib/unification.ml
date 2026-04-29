@@ -99,6 +99,7 @@ based on https://www.cambridge.org/core/services/aop-cambridge-core/content/view
 but for now its too complicated
 we go back to an easier unification algorithm
 *)
+(*TODO : add reductions*)
 let rec unify (sigma0:sigma) (ctx:context) (e1:lt) (e2:lt) : sigma =
   let e1 = apply_sigma sigma0 e1 in
   let e2 = apply_sigma sigma0 e2 in
