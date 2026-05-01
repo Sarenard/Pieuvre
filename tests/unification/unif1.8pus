@@ -1,0 +1,10 @@
+Inductive eq : forall A : Type, A -> A -> Type :=
+    | refl : forall A : Type, forall x : A, eq A x x
+.
+
+Theorem use_refl : forall A : Type, forall x : A, eq A x x.
+Proof.
+    intro A.
+    intro x.
+    apply refl.
+Qed.

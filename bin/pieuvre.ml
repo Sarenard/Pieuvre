@@ -1,6 +1,7 @@
 open Lib
-open Interactive
+open! Interactive
 open Automatic
+open Unification
 
 let nom_fichier = ref ""
 
@@ -16,6 +17,7 @@ let run () =
     "";
   match !nom_fichier with
     | "" -> (
+      unify_run ();
       (*Interactive UI*)
       interactive ();
     )
