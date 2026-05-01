@@ -1,5 +1,6 @@
 open Expr
 open Util
+open Unification
 
 (*
 This is the function that handles tactics
@@ -63,26 +64,53 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
       | Goal(k, ty) when k = i -> (
         match List.find_opt (fun (y, _) -> x = y) gamma_var with
         | Some (_, fty) ->
+          let next_mvar = ref 0 in
+          let fresh_mvar () =
+            let id = !next_mvar in
+            incr next_mvar;
+            id
+          in
+          let sigma = fresh_sigma () in
+          let meta_types : (int, lambdaterm) Hashtbl.t = Hashtbl.create 16 in
+          (*does the substitution*)
+          let rec materialize_term tm =
+            match apply_sigma sigma tm with
+            | Mvar j -> (
+              match Hashtbl.find_opt meta_types j with
+              | Some meta_ty -> Goal(0, materialize_term meta_ty)
+              | None -> Mvar j
+            )
+            | Var _ | Type | Inductive _ as tm -> tm
+            | Goal(goal_id, tm) -> Goal(goal_id, materialize_term tm)
+            | App(t1, t2) -> App(materialize_term t1, materialize_term t2)
+            | Pi(arg, a, b) -> Pi(arg, materialize_term a, materialize_term b)
+            | Func(arg, a, b) -> Func(arg, materialize_term a, materialize_term b)
+            | Constructor(ind, cst, args) ->
+              Constructor(ind, cst, List.map materialize_term args)
+          in
           let rec collect_args args fty =
-            let fty = reduce big_gamma fty in
-            match fty with
-            | _ when equiv big_gamma fty ty -> Some (List.rev args)
-            | Pi(arg, a, b) ->
-              (*we put back numbers after so its okay to put them as 0 for now*)
-              let new_goal = Goal(0, a) in
-              (*TODO : do this but properly with unification*)
-              (* Zoe said :
-                dans une implémentation propre de apply tu remplaces le replace par une unification
-                l'unification te yield une solution
-                ça t'a unifié ton goal et les hypothèses du apply
-                et t'as juste à introduire les hypothèses unifiées
-              *)
-              collect_args (new_goal :: args) (replace b arg new_goal)
-            | _ -> None
+            let fty = reduce big_gamma (apply_sigma sigma fty) in
+            try
+              let sigma' = unify sigma big_gamma fty ty in
+              Some (sigma', List.rev args)
+            with
+            | UnificationError _ -> (
+              match fty with
+              | Pi(arg, a, b) ->
+                let meta_id = fresh_mvar () in
+                let meta = Mvar meta_id in
+                Hashtbl.replace meta_types meta_id a;
+                collect_args (meta :: args) (replace b arg meta)
+              | _ -> None
+            )
           in (
             match collect_args [] fty with
-            | Some [] -> Var x
-            | Some args -> List.fold_left (fun acc arg -> App(acc, arg)) (Var x) args
+            | Some (_, []) -> Var x
+            | Some (_, args) ->
+              List.fold_left
+                (fun acc arg -> App(acc, materialize_term arg))
+                (Var x)
+                args
             | None -> goal
           )
         | None -> goal
