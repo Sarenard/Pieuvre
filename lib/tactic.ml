@@ -117,4 +117,9 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
       )
       | _ -> goal
     in run_replace term replace_goal
+    | Cut(x) -> let replace_goal goal = 
+      match goal with
+      | Goal(k, ty) when k = i -> App(Goal(k, Pi("_", x, ty)), Goal(0, x))
+      | _ -> goal
+    in run_replace term replace_goal
 ;;

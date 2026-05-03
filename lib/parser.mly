@@ -10,7 +10,7 @@ TODO : some error recovery / indications
 /*GENERAL*/
 %token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA
 /*TACTICS*/
-%token INTRO TRIVIAL EXACT DOT QED APPLY
+%token INTRO TRIVIAL EXACT DOT QED APPLY CUT
 /*STATEMENTS*/
 %token THEOREM PROOF INDUCTIVE DEFINE
 %token <int> INT       /* le lexème INT a un attribut entier */
@@ -99,3 +99,4 @@ tactic:
   | TRIVIAL { Trivial }
   | APPLY x=VAR { Apply(x) }
   | EXACT t=lambdaterm { Exact(t) }
+  | CUT t=lambdaterm { Cut(t) }

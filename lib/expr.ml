@@ -75,6 +75,7 @@ type tactic =
 | Exact of lambdaterm
 | Apply of string
 (*| Exact of lambdaterm*)
+| Cut of lambdaterm
 [@@deriving show]
 ;;
 

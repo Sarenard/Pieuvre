@@ -37,6 +37,7 @@ rule token = parse
   | "exact"             { EXACT }
   | "apply"             { APPLY }
   | "Qed"             { QED }
+  | "cut"             { CUT } 
 
   | var as s { VAR s }
   
