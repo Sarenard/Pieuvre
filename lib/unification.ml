@@ -41,7 +41,11 @@ let rec occurs_mvar (i : int) (term : lt) : bool =
   | Pi(_, t1, t2)
   | Func(_, t1, t2)
   | Prod(t1, t2)
+  | Sum(t1, t2)
+  | InL(t1, t2)
+  | InR(t1, t2)
   | Pair(t1, t2) -> occurs_mvar i t1 || occurs_mvar i t2
+  | Match(t1, t2, t3) -> occurs_mvar i t1 || occurs_mvar i t2 || occurs_mvar i t3
   | Constructor(_, _, args) -> List.exists (occurs_mvar i) args
 ;;
 
@@ -62,6 +66,10 @@ let rec substitute_mvar (i : int) (replacement : lt) (term : lt) : lt =
   | Snd(x) -> Snd(substitute_mvar i replacement x)
   | Pair(a, b) -> Pair(substitute_mvar i replacement a, substitute_mvar i replacement b)
   | Prod(a, b) -> Prod(substitute_mvar i replacement a, substitute_mvar i replacement b)
+  | Sum(a, b) -> Sum(substitute_mvar i replacement a, substitute_mvar i replacement b)
+  | InL(a, b) -> InL(substitute_mvar i replacement a, substitute_mvar i replacement b)
+  | InR(a, b) -> InR(substitute_mvar i replacement a, substitute_mvar i replacement b)
+  | Match(a, b, c) -> Match(substitute_mvar i replacement a, substitute_mvar i replacement b, substitute_mvar i replacement c)
 ;;
 
 let rec apply_sigma (sigma : sigma) (term : lt) : lt =
@@ -82,6 +90,10 @@ let rec apply_sigma (sigma : sigma) (term : lt) : lt =
   | Snd(x) -> Snd(apply_sigma sigma x)
   | Pair(a, b) -> Pair(apply_sigma sigma a, apply_sigma sigma b)
   | Prod(a, b) -> Prod(apply_sigma sigma a, apply_sigma sigma b)
+  | Sum(a, b) -> Sum(apply_sigma sigma a, apply_sigma sigma b)
+  | InR(a, b) -> InR(apply_sigma sigma a, apply_sigma sigma b)
+  | InL(a, b) -> InL(apply_sigma sigma a, apply_sigma sigma b)
+  | Match(a, b, c) -> Match(apply_sigma sigma a, apply_sigma sigma b, apply_sigma sigma c)
 ;;
 
 let instantiate_meta (sigma : sigma) (i : int) (term : lt) : sigma =

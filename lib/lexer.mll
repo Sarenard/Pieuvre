@@ -20,6 +20,7 @@ rule token = parse
   | "->"             { SMALLARROW }
   | ','             { COMMA }
   | "/\\"           { AND }
+  | "\\/"           { OR }
   | ":=" {DEFINE}
   | "|" {PIPE}
   
@@ -40,6 +41,8 @@ rule token = parse
   | "cut"             { CUT }
   | "split"           { SPLIT }
   | "destruct"        { DESTRUCT }
+  | "left"            { LEFT }
+  | "right"           { RIGHT }
   | "Qed"             { QED } 
 
   | var as s { VAR s }

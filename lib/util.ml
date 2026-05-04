@@ -22,11 +22,12 @@ let get_goals (gamma:context) (term:lambdaterm) =
       | Func(x, a, b) -> 
         let new_env = { gamma = (x, a) :: gamma_var; inductive_types = gamma_ind ; values = gamma_val} in
         get_goals_aux new_env b
-      | App(a, b) | Prod(a, b) | Pair(a, b) -> (get_goals_aux gamma a)@(get_goals_aux gamma b)
+      | App(a, b) | Prod(a, b) | Pair(a, b) | Sum(a, b) | InL(a, b) | InR(a, b) -> (get_goals_aux gamma a)@(get_goals_aux gamma b)
       | Goal(i, a) -> [(i, gamma, a)]
       | Inductive(_) -> []
       | Constructor(_, _, lst) -> List.concat_map (get_goals_aux gamma) lst
       | Fst(x) | Snd(x) -> get_goals_aux gamma x
+      | Match(a, b, c) -> get_goals_aux gamma a @ get_goals_aux gamma b @ get_goals_aux gamma c
     ) in get_goals_aux gamma term
 ;;
 
@@ -51,6 +52,10 @@ let numerote (term:lambdaterm) : lambdaterm =
     | Snd (x) -> Snd (dfs x)
     | Prod(a, b) -> Prod(dfs a, dfs b)
     | Pair(a, b) -> Pair(dfs a, dfs b)
+    | InL(a, b) -> InL(dfs a, dfs b)
+    | InR(a, b) -> InR(dfs a, dfs b)
+    | Sum(a, b) -> Sum(dfs a, dfs b)
+    | Match(a, b, c) -> Match(dfs a, dfs b, dfs c)
   in
   dfs term
 ;;
@@ -71,6 +76,10 @@ let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambda
   | Snd (a) -> Snd(run_replace a func)
   | Pair(a, b) -> Pair(run_replace a func, run_replace b func)
   | Prod(a, b) -> Prod(run_replace a func, run_replace b func)
+  | Sum(a, b) -> Sum(run_replace a func, run_replace b func)
+  | InL(a, b) -> InL(run_replace a func, run_replace b func)
+  | InR(a, b) -> InR(run_replace a func, run_replace b func)
+  | Match(a, b, c) -> Match(run_replace a func, run_replace b func, run_replace c func)
 ;;
 
 let show_list show xs =

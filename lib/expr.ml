@@ -34,6 +34,12 @@ type lambdaterm =
   | Fst of lambdaterm
   | Snd of lambdaterm
 
+  (* sums *)
+  | Sum of lambdaterm * lambdaterm (* le type *)
+  | InL of lambdaterm * lambdaterm (* element, type of B *)
+  | InR of lambdaterm * lambdaterm (* type of A, element *)
+  | Match of lambdaterm * lambdaterm * lambdaterm (* types A \/ B, A -> C, B -> C *)
+
 [@@deriving show]
 ;;
 
@@ -70,6 +76,10 @@ let rec affiche_lam ty : string =
   | Pair(a, b) -> "(" ^ affiche_lam a ^ ", " ^ affiche_lam b ^ ")"
   | Fst(a) -> "Fst(" ^ affiche_lam a ^ ")"
   | Snd(a) -> "Snd(" ^ affiche_lam a ^ ")"
+  | InL(a, b) -> "InL(" ^ affiche_lam a ^ ", " ^ affiche_lam b ^ ")"
+  | InR(a, b) -> "InR(" ^ affiche_lam a ^ ", " ^ affiche_lam b ^ ")"
+  | Sum(a, b) -> paren a ^ " \\/ " ^ paren b
+  | Match(a, b, c) -> "match " ^ affiche_lam a ^ " with " ^ affiche_lam b ^ " || " ^ affiche_lam c
 ;;
 
 (*
@@ -89,6 +99,8 @@ type tactic =
 | Cut of lambdaterm
 | Split
 | Destruct of string
+| Left
+| Right
 [@@deriving show]
 ;;
 
@@ -145,7 +157,10 @@ let alpha term1 term2 =
         && alpha_aux ((x, y) :: env12) ((y, x) :: env21) b1 b2
     | App (f1, x1), App (f2, x2)
     | Pair(f1, x1), Pair(f2, x2)
-    | Prod(f1, x1), Prod(f2, x2) ->
+    | Prod(f1, x1), Prod(f2, x2)
+    | Sum(f1, x1), Sum(f2, x2)
+    | InL(f1, x1), InL(f2, x2)
+    | InR(f1, x1), InR(f2, x2) ->
         alpha_aux env12 env21 f1 f2
         && alpha_aux env12 env21 x1 x2
     | Inductive i1, Inductive i2 -> i1 = i2
@@ -154,6 +169,8 @@ let alpha term1 term2 =
         && i1 = i2
         && List.length args1 = List.length args2
         && List.for_all2 (alpha_aux env12 env21) args1 args2
+    | Match(a, b, c), Match(a', b', c') ->
+      alpha_aux env12 env21 a a' && alpha_aux env12 env12 b b' && alpha_aux env12 env21 c c'
     | _ -> false
   in
   alpha_aux [] [] term1 term2
@@ -172,7 +189,7 @@ let rec free_and_bound term bound = match term with
     let (f1, b1) = free_and_bound ty bound in
     let (f2, b2) = free_and_bound body (s::bound) in
     (f1 @ f2, b1 @ b2)
-  | App(t1, t2) | Pair(t1, t2) | Prod(t1, t2) ->
+  | App(t1, t2) | Pair(t1, t2) | Prod(t1, t2) | Sum(t1, t2) | InL(t1, t2) | InR(t1, t2) ->
     let (f1, b1) = free_and_bound t1 bound in
     let (f2, b2) = free_and_bound t2 bound in
     (f1 @ f2, b1 @ b2)
@@ -188,6 +205,11 @@ let rec free_and_bound term bound = match term with
       ([], bound)
       args
   | Fst(x) | Snd(x) -> free_and_bound x bound
+  | Match(a, b, c) -> 
+    let (f1, b1) = free_and_bound a bound in
+    let (f2, b2) = free_and_bound b bound in
+    let (f3, b3) = free_and_bound c bound in
+    (f1 @ f2 @ f3, b1 @ b2 @ b3)
 ;;
 
 (*
@@ -263,6 +285,10 @@ let rec replace term x x' = match term with
   | Snd(t) -> Snd(replace t x x')
   | Pair(t, t') -> Pair(replace t x x', replace t' x x')
   | Prod(t, t') -> Prod(replace t x x', replace t' x x')
+  | Sum(t, t') -> Sum(replace t x x', replace t' x x')
+  | InL(t, t') -> InL(replace t x x', replace t' x x')
+  | InR(t, t') -> InR(replace t x x', replace t' x x')
+  | Match(t, t', t'') -> Match(replace t x x', replace t' x x', replace t'' x x')
 
 
 (*
@@ -324,11 +350,17 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
       | None -> None)
   | Fst(t) -> (match betastep ctx t with
     | Some t' -> Some (Fst(t'))
-    | None -> None
+    | None -> (match t with
+      | Pair(a, _) -> Some a
+      | _ -> None
+    )
   )
   | Snd(t) -> (match betastep ctx t with
-    | Some t' -> Some(Snd(t'))
-    | None -> None
+    | Some t' -> Some (Snd(t'))
+    | None -> (match t with
+      | Pair(_, b) -> Some b
+      | _ -> None
+    )
   )
   | Prod(f, t) ->
     (match betastep ctx f with
@@ -344,6 +376,39 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
       match betastep ctx t with
       | Some t' -> Some (Pair(f, t'))
       | None -> None)
+  | Sum(f, t) ->
+    (match betastep ctx f with
+    | Some f' -> Some (Sum(f', t))
+    | None ->
+      match betastep ctx t with
+      | Some t' -> Some (Sum(f, t'))
+      | None -> None)
+  | InL(f, t) ->
+    (match betastep ctx f with
+    | Some f' -> Some (InL(f', t))
+    | None ->
+      match betastep ctx t with
+      | Some t' -> Some (InL(f, t'))
+      | None -> None)
+  | InR(f, t) ->
+    (match betastep ctx f with
+    | Some f' -> Some (InR(f', t))
+    | None ->
+      match betastep ctx t with
+      | Some t' -> Some (InR(f, t'))
+      | None -> None)
+  | Match(InL(a, _), t, _) -> Some(App(t, a))
+  | Match(InR(_, b), _, t) -> Some(App(t, b))
+  | Match(f, t, t2) ->
+    (match betastep ctx f with
+    | Some f' -> Some (Match(f', t, t2))
+    | None ->
+      match betastep ctx t with
+      | Some t' -> Some (Match(f, t', t2))
+      | None -> (match betastep ctx t2 with
+        | Some t'' -> Some (Match(f, t, t''))
+        | None -> None
+      ))
 ;;
 
 (*
@@ -373,7 +438,7 @@ exception Type_error;;
 exception Unexpected_goal;;
 exception Unbound_variable of string;;
 
-let debug s = ()
+let debug s = (*print_endline s*) ()
 
 (*
 This checks if something is of type Type
@@ -456,6 +521,44 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
     debug ("PROD " ^ (affiche_lam (reduce gamma term)));
     Type
   )
+  | Sum(t, t') -> (
+    debug "tryna type sum";
+    check_is_type gamma t;
+    debug "typed first of sum";
+    check_is_type gamma t';
+    debug ("SUM " ^ (affiche_lam (reduce gamma term)));
+    Type
+  )
+  | InL(a, b) -> (
+    debug "tryna type INL";
+    check_is_type gamma b;
+    Sum(infer gamma (reduce gamma a), b)
+  )
+  | InR(a, b) -> (
+    debug "tryna type INR";
+    check_is_type gamma a;
+    Sum(a, infer gamma (reduce gamma b))
+  )
+  | Match(avb, a_c, b_c) -> (
+    debug "tryna type match";
+    match (infer gamma (reduce gamma avb), 
+          infer gamma (reduce gamma a_c), 
+          infer gamma (reduce gamma b_c)) with
+    | Sum(a, b), Pi(x, a', c1), Pi(x', b', c2) -> (
+      debug ("tryna type " ^ (affiche_lam (Sum(a, b))) ^ " @ " ^ (affiche_lam (Pi(x, a', c1))) ^ " @ " ^ (affiche_lam (Pi(x', b', c2))));
+      check_is_type gamma a;
+      debug "1";
+      check_is_type gamma b;
+      debug ("2 " ^ (affiche_lam a) ^ " | " ^ (affiche_lam a'));
+      assert (equiv gamma (reduce gamma a) (reduce gamma a'));
+      debug ("3 " ^ (affiche_lam b) ^ " | " ^ (affiche_lam b'));
+      assert (equiv gamma (reduce gamma b) (reduce gamma b'));
+      debug "4";
+      assert (equiv gamma (reduce gamma c1) (reduce gamma c2));
+      c1
+    )
+    | _ -> debug "Type error in match"; raise Type_error
+  )
   | Inductive(_) ->
     assert false;
   | Constructor(_) ->
@@ -489,9 +592,10 @@ let rec occurs_bound bound name term =
     occurs_bound bound name a || occurs_bound (x :: bound) name b
   | Func (x, a, b) ->
     occurs_bound bound name a || occurs_bound (x :: bound) name b
-  | App (a, b) | Pair(a, b) | Prod(a, b) ->
+  | App (a, b) | Pair(a, b) | Prod(a, b) | Sum(a, b) | InL(a, b) | InR(a, b) ->
     occurs_bound bound name a || occurs_bound bound name b
   | Fst(a) | Snd(a) -> occurs_bound bound name a
+  | Match(a, b, c) -> occurs_bound bound name a || occurs_bound bound name b || occurs_bound bound name c
 ;;
 
 (*https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf*)

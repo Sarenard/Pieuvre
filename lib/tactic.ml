@@ -91,6 +91,10 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
             | Snd(x) -> Snd(materialize_term x)
             | Prod(a, b) -> Prod(materialize_term a, materialize_term b)
             | Pair(a, b) -> Pair(materialize_term a, materialize_term b)
+            | Sum(a, b) -> Sum(materialize_term a, materialize_term b)
+            | InL(a, b) -> InL(materialize_term a, materialize_term b)
+            | InR(a, b) -> InR(materialize_term a, materialize_term b)
+            | Match(a, b, c) -> Match(materialize_term a, materialize_term b, materialize_term c)
           in
           let rec collect_args args fty =
             let fty = reduce big_gamma (apply_sigma sigma fty) in
@@ -140,8 +144,22 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
           let h0 = get_fresh h taken in
           let h1 = get_fresh h (h0::taken) in
           App(App(Func(h0, a, Func(h1, b, Goal(k, ty))), Fst(Var(h))), Snd(Var(h)))
+        | _, Sum(a, b) ->
+          let taken = List.map (fun (a, b) -> a) gamma.gamma in
+          let h0 = get_fresh h taken in
+          Match(Var(h), Func(h0, a, goal), Func(h0, b, goal))
         | _ -> failwith "oops"
       )
+      | _ -> goal
+    in run_replace term replace_goal
+    | Left -> let replace_goal goal =
+      match goal with
+      | Goal(k, Sum(a, b)) when k = i -> InL(Goal(k, a), b)
+      | _ -> goal
+    in run_replace term replace_goal
+    | Right -> let replace_goal goal =
+      match goal with
+      | Goal(k, Sum(a, b)) when k = i -> InR(a, Goal(k, b))
       | _ -> goal
     in run_replace term replace_goal
 ;;
