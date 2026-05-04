@@ -87,6 +87,10 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
             | Func(arg, a, b) -> Func(arg, materialize_term a, materialize_term b)
             | Constructor(ind, cst, args) ->
               Constructor(ind, cst, List.map materialize_term args)
+            | Fst(x) -> Fst(materialize_term x)
+            | Snd(x) -> Snd(materialize_term x)
+            | Prod(a, b) -> Prod(materialize_term a, materialize_term b)
+            | Pair(a, b) -> Pair(materialize_term a, materialize_term b)
           in
           let rec collect_args args fty =
             let fty = reduce big_gamma (apply_sigma sigma fty) in
@@ -120,6 +124,24 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
     | Cut(x) -> let replace_goal goal = 
       match goal with
       | Goal(k, ty) when k = i -> App(Goal(k, Pi("_", x, ty)), Goal(0, x))
+      | _ -> goal
+    in run_replace term replace_goal
+    | Split -> let replace_goal goal =
+      match goal with
+      | Goal(k, Prod(t, t')) when k = i -> Pair(Goal(k, t), Goal(k, t'))
+      | _ -> goal
+    in run_replace term replace_goal
+    | Destruct(h) -> let replace_goal goal = 
+      match goal with
+      | Goal(k, ty) when k = i -> (
+        match (List.find (fun (s, _) -> s = h) gamma.gamma) with
+        | _, Prod(a, b) -> 
+          let taken = List.map (fun (a, b) -> a) gamma.gamma in
+          let h0 = get_fresh h taken in
+          let h1 = get_fresh h (h0::taken) in
+          App(App(Func(h0, a, Func(h1, b, Goal(k, ty))), Fst(Var(h))), Snd(Var(h)))
+        | _ -> failwith "oops"
+      )
       | _ -> goal
     in run_replace term replace_goal
 ;;

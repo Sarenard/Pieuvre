@@ -22,10 +22,11 @@ let get_goals (gamma:context) (term:lambdaterm) =
       | Func(x, a, b) -> 
         let new_env = { gamma = (x, a) :: gamma_var; inductive_types = gamma_ind ; values = gamma_val} in
         get_goals_aux new_env b
-      | App(a, b) -> (get_goals_aux gamma a)@(get_goals_aux gamma b)
+      | App(a, b) | Prod(a, b) | Pair(a, b) -> (get_goals_aux gamma a)@(get_goals_aux gamma b)
       | Goal(i, a) -> [(i, gamma, a)]
       | Inductive(_) -> []
       | Constructor(_, _, lst) -> List.concat_map (get_goals_aux gamma) lst
+      | Fst(x) | Snd(x) -> get_goals_aux gamma x
     ) in get_goals_aux gamma term
 ;;
 
@@ -46,6 +47,10 @@ let numerote (term:lambdaterm) : lambdaterm =
     | App (a, b) -> App (dfs a, dfs b)
     | Inductive(_) -> term
     | Constructor(i, j, args) -> Constructor(i, j, List.map dfs args)
+    | Fst (x) -> Fst (dfs x)
+    | Snd (x) -> Snd (dfs x)
+    | Prod(a, b) -> Prod(dfs a, dfs b)
+    | Pair(a, b) -> Pair(dfs a, dfs b)
   in
   dfs term
 ;;
@@ -62,6 +67,10 @@ let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambda
   | App (a, b) -> App (run_replace a func, run_replace b func)
   | Inductive(_) -> term
   | Constructor(i, j, lst) -> Constructor(i, j, List.map (fun t -> run_replace t func) lst)
+  | Fst (a) -> Fst(run_replace a func)
+  | Snd (a) -> Snd(run_replace a func)
+  | Pair(a, b) -> Pair(run_replace a func, run_replace b func)
+  | Prod(a, b) -> Prod(run_replace a func, run_replace b func)
 ;;
 
 let show_list show xs =

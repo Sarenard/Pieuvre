@@ -19,6 +19,7 @@ rule token = parse
   | "=>"             { BIGARROW }
   | "->"             { SMALLARROW }
   | ','             { COMMA }
+  | "/\\"           { AND }
   | ":=" {DEFINE}
   | "|" {PIPE}
   
@@ -36,8 +37,10 @@ rule token = parse
   | "trivial"             { TRIVIAL }
   | "exact"             { EXACT }
   | "apply"             { APPLY }
-  | "Qed"             { QED }
-  | "cut"             { CUT } 
+  | "cut"             { CUT }
+  | "split"           { SPLIT }
+  | "destruct"        { DESTRUCT }
+  | "Qed"             { QED } 
 
   | var as s { VAR s }
   

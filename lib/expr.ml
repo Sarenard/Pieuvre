@@ -28,6 +28,12 @@ type lambdaterm =
   (*Unification*)
   | Mvar of mvar (*?x*)
 
+  (* produits *)
+  | Prod of lambdaterm * lambdaterm (* le type *)
+  | Pair of lambdaterm * lambdaterm
+  | Fst of lambdaterm
+  | Snd of lambdaterm
+
 [@@deriving show]
 ;;
 
@@ -37,6 +43,7 @@ let rec affiche_lam ty : string =
     | App(_, _) -> 5
     | Pi(_, _, _) -> 3
     | Func(_, _, _) -> 1
+    | _ -> 0
   in
   let pself = prec ty in
   let paren e : string = 
@@ -59,6 +66,10 @@ let rec affiche_lam ty : string =
   | Func(x, a, b) -> "fun " ^ x ^ " : " ^ affiche_lam a ^ " => " ^ affiche_lam b
   | App(a, b) -> sparen a ^ " " ^ paren b
   | Goal(_, a) -> "Goal(" ^ affiche_lam a ^ ")"
+  | Prod(a, b) -> paren a ^ " /\\ " ^ paren b
+  | Pair(a, b) -> "(" ^ affiche_lam a ^ ", " ^ affiche_lam b ^ ")"
+  | Fst(a) -> "Fst(" ^ affiche_lam a ^ ")"
+  | Snd(a) -> "Snd(" ^ affiche_lam a ^ ")"
 ;;
 
 (*
@@ -76,6 +87,8 @@ type tactic =
 | Apply of string
 (*| Exact of lambdaterm*)
 | Cut of lambdaterm
+| Split
+| Destruct of string
 [@@deriving show]
 ;;
 
@@ -123,12 +136,16 @@ let alpha term1 term2 =
         | _ -> false
       )
     | Type, Type -> true
-    | Goal(_, t1), Goal(_, t2) -> alpha_aux env12 env21 t1 t2
+    | Goal(_, t1), Goal(_, t2)
+    | Fst(t1), Fst(t2)
+    | Snd(t1), Snd(t2) -> alpha_aux env12 env21 t1 t2
     | Pi (x, a1, b1), Pi (y, a2, b2)
     | Func (x, a1, b1), Func (y, a2, b2) ->
         alpha_aux env12 env21 a1 a2
         && alpha_aux ((x, y) :: env12) ((y, x) :: env21) b1 b2
-    | App (f1, x1), App (f2, x2) ->
+    | App (f1, x1), App (f2, x2)
+    | Pair(f1, x1), Pair(f2, x2)
+    | Prod(f1, x1), Prod(f2, x2) ->
         alpha_aux env12 env21 f1 f2
         && alpha_aux env12 env21 x1 x2
     | Inductive i1, Inductive i2 -> i1 = i2
@@ -155,11 +172,11 @@ let rec free_and_bound term bound = match term with
     let (f1, b1) = free_and_bound ty bound in
     let (f2, b2) = free_and_bound body (s::bound) in
     (f1 @ f2, b1 @ b2)
-  | App(t1, t2) ->
+  | App(t1, t2) | Pair(t1, t2) | Prod(t1, t2) ->
     let (f1, b1) = free_and_bound t1 bound in
     let (f2, b2) = free_and_bound t2 bound in
     (f1 @ f2, b1 @ b2)
-    | Goal(_, goal) -> free_and_bound goal bound
+  | Goal(_, goal) -> free_and_bound goal bound
   | Type -> ([], bound)
   | Mvar(_) -> ([], bound)
   | Inductive(_) -> ([], bound) 
@@ -170,6 +187,7 @@ let rec free_and_bound term bound = match term with
         (free_acc @ free_arg, bound_acc @ bound_arg))
       ([], bound)
       args
+  | Fst(x) | Snd(x) -> free_and_bound x bound
 ;;
 
 (*
@@ -241,6 +259,10 @@ let rec replace term x x' = match term with
   | Inductive(i) -> term
   | Constructor(i, j, args) ->
     Constructor(i, j, List.map (fun arg -> replace arg x x') args)
+  | Fst(t) -> Fst(replace t x x')
+  | Snd(t) -> Snd(replace t x x')
+  | Pair(t, t') -> Pair(replace t x x', replace t' x x')
+  | Prod(t, t') -> Prod(replace t x x', replace t' x x')
 
 
 (*
@@ -300,6 +322,28 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
       match betastep ctx t with
       | Some t' -> Some (App(f, t'))
       | None -> None)
+  | Fst(t) -> (match betastep ctx t with
+    | Some t' -> Some (Fst(t'))
+    | None -> None
+  )
+  | Snd(t) -> (match betastep ctx t with
+    | Some t' -> Some(Snd(t'))
+    | None -> None
+  )
+  | Prod(f, t) ->
+    (match betastep ctx f with
+    | Some f' -> Some (Prod(f', t))
+    | None ->
+      match betastep ctx t with
+      | Some t' -> Some (Prod(f, t'))
+      | None -> None)
+  | Pair(f, t) ->
+    (match betastep ctx f with
+    | Some f' -> Some (Pair(f', t))
+    | None ->
+      match betastep ctx t with
+      | Some t' -> Some (Pair(f, t'))
+      | None -> None)
 ;;
 
 (*
@@ -329,6 +373,8 @@ exception Type_error;;
 exception Unexpected_goal;;
 exception Unbound_variable of string;;
 
+let debug s = ()
+
 (*
 This checks if something is of type Type
   we will need to change that when we will handle universes
@@ -356,13 +402,18 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   | Goal(_, _a) -> raise Unexpected_goal;
   | Pi(x, a, b) -> 
     let new_context = { gamma = (x, a) :: gamma_var; inductive_types = gamma_ind; values = gamma_val } in
+    debug ("tryna type pi " ^ x ^ ": " ^ (affiche_lam a) ^ " to " ^ (affiche_lam b));
     check_is_type gamma a;
+    debug ("a was type, lets see if " ^ (affiche_lam (reduce new_context b)) ^ " is");
     check_is_type new_context b;
     Type 
-  | Func(v, ty, body) -> 
+  | Func(v, ty, body) ->
+    debug ("tryna type func " ^ (affiche_lam ty) ^ " to " ^ (affiche_lam body));
     check_is_type gamma ty;
+    debug "ty was type";
     let new_context = { gamma = (v, ty) :: gamma_var; inductive_types = gamma_ind; values = gamma_val } in
     let body_type = infer new_context body in
+    debug (affiche_lam body_type);
     check_is_type new_context body_type;
     Pi(v, ty, body_type)
   | App(f, t) -> (
@@ -371,8 +422,39 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
       typecheck gamma t a;
       reduce gamma (replace b x t)
     | _ -> 
-      print_endline "Type error in an app";
+      debug "Type error in an app";
       raise Type_error;
+  )
+  | Fst(t) -> (
+    debug "tryna type fst";
+    match infer gamma (reduce gamma t) with
+    | Prod(a, _) -> a
+    | _ ->
+      debug "Type error in Fst";
+      raise Type_error;
+  )
+  | Snd(t) -> (
+    debug "tryna type snd";
+    match infer gamma (reduce gamma t) with
+    | Prod(_, b) -> b
+    | _ ->
+      debug "Type error in Snd";
+      raise Type_error;
+  )
+  | Pair(t, t') -> (
+    let a = infer gamma (reduce gamma t) in
+    debug "typed first of pair";
+    let b = infer gamma (reduce gamma t') in
+    debug ("PAIR " ^ (affiche_lam (reduce gamma term)));
+    Prod(a, b)
+  )
+  | Prod(t, t') -> (
+    debug "tryna type prod";
+    check_is_type gamma t;
+    debug "typed first of prod";
+    check_is_type gamma t';
+    debug ("PROD " ^ (affiche_lam (reduce gamma term)));
+    Type
   )
   | Inductive(_) ->
     assert false;
@@ -385,6 +467,7 @@ does nothing or raises an error
 *)
 and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
   let type_of_term = infer gamma term in
+  (*print_endline ("typed " ^ affiche_lam type_of_term ^ " | expecting " ^ affiche_lam ty);*)
   if equiv gamma type_of_term ty then
     ()
   else
@@ -406,8 +489,9 @@ let rec occurs_bound bound name term =
     occurs_bound bound name a || occurs_bound (x :: bound) name b
   | Func (x, a, b) ->
     occurs_bound bound name a || occurs_bound (x :: bound) name b
-  | App (a, b) ->
+  | App (a, b) | Pair(a, b) | Prod(a, b) ->
     occurs_bound bound name a || occurs_bound bound name b
+  | Fst(a) | Snd(a) -> occurs_bound bound name a
 ;;
 
 (*https://link.springer.com/content/pdf/10.1007/BFb0037116.pdf*)

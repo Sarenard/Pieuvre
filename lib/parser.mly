@@ -8,9 +8,9 @@ TODO : some error recovery / indications
 
 /* PART 1 : LEXEMES ******* */                                   
 /*GENERAL*/
-%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA
+%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA AND
 /*TACTICS*/
-%token INTRO TRIVIAL EXACT DOT QED APPLY CUT
+%token INTRO TRIVIAL EXACT DOT QED APPLY CUT SPLIT DESTRUCT
 /*STATEMENTS*/
 %token THEOREM PROOF INDUCTIVE DEFINE
 %token <int> INT       /* le lexème INT a un attribut entier */
@@ -77,6 +77,10 @@ fun_binder:
 pi_term:
   | FORALL x=VAR COLON a=lambdaterm COMMA b=pi_term { Pi(x, a, b) }
   | a=applic SMALLARROW b=pi_term { Pi("_", a, b) }
+  | conj_disj { $1 }
+
+conj_disj:
+  | a=conj_disj AND b=applic { Prod(a, b) }
   | applic { $1 }
 
 applic:
@@ -100,3 +104,5 @@ tactic:
   | APPLY x=VAR { Apply(x) }
   | EXACT t=lambdaterm { Exact(t) }
   | CUT t=lambdaterm { Cut(t) }
+  | SPLIT { Split }
+  | DESTRUCT h=VAR { Destruct(h) }

@@ -34,10 +34,14 @@ let rec occurs_mvar (i : int) (term : lt) : bool =
   match term with
   | Mvar j -> i = j
   | Var _ | Type | Inductive _ -> false
-  | Goal(_, t) -> occurs_mvar i t
+  | Goal(_, t)
+  | Fst(t)
+  | Snd(t) -> occurs_mvar i t
   | App(t1, t2) -> occurs_mvar i t1 || occurs_mvar i t2
   | Pi(_, t1, t2)
-  | Func(_, t1, t2) -> occurs_mvar i t1 || occurs_mvar i t2
+  | Func(_, t1, t2)
+  | Prod(t1, t2)
+  | Pair(t1, t2) -> occurs_mvar i t1 || occurs_mvar i t2
   | Constructor(_, _, args) -> List.exists (occurs_mvar i) args
 ;;
 
@@ -54,6 +58,10 @@ let rec substitute_mvar (i : int) (replacement : lt) (term : lt) : lt =
     Func(x, substitute_mvar i replacement t1, substitute_mvar i replacement t2)
   | Constructor(ind, cst, args) ->
     Constructor(ind, cst, List.map (substitute_mvar i replacement) args)
+  | Fst(x) -> Fst(substitute_mvar i replacement x)
+  | Snd(x) -> Snd(substitute_mvar i replacement x)
+  | Pair(a, b) -> Pair(substitute_mvar i replacement a, substitute_mvar i replacement b)
+  | Prod(a, b) -> Prod(substitute_mvar i replacement a, substitute_mvar i replacement b)
 ;;
 
 let rec apply_sigma (sigma : sigma) (term : lt) : lt =
@@ -70,6 +78,10 @@ let rec apply_sigma (sigma : sigma) (term : lt) : lt =
   | Func(x, t1, t2) -> Func(x, apply_sigma sigma t1, apply_sigma sigma t2)
   | Constructor(ind, cst, args) ->
     Constructor(ind, cst, List.map (apply_sigma sigma) args)
+  | Fst(x) -> Fst(apply_sigma sigma x)
+  | Snd(x) -> Snd(apply_sigma sigma x)
+  | Pair(a, b) -> Pair(apply_sigma sigma a, apply_sigma sigma b)
+  | Prod(a, b) -> Prod(apply_sigma sigma a, apply_sigma sigma b)
 ;;
 
 let instantiate_meta (sigma : sigma) (i : int) (term : lt) : sigma =
