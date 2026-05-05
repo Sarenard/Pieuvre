@@ -170,4 +170,14 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
       | Goal(k, ty) when k = i -> Goal(k, reduce gamma ty)
       | _ -> goal
     in run_replace term replace_goal
+    | Induction(x) -> (
+      match List.assoc_opt x gamma_var with
+      | None -> failwith ("Cannot induct here, unknown variable " ^ x)
+      | Some _ ->
+        let replace_goal goal =
+          match goal with
+          | Goal(k, _ty) when k = i -> failwith ("TODO INDUCTION " ^ x)
+          | _ -> goal
+        in run_replace term replace_goal
+    )
 ;;

@@ -10,7 +10,7 @@ TODO : some error recovery / indications
 /*GENERAL*/
 %token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA AND OR INL INR FST SND MATCH
 /*TACTICS*/
-%token INTRO TRIVIAL EXACT DOT QED APPLY CUT SPLIT DESTRUCT LEFT RIGHT SIMPL
+%token INTRO TRIVIAL EXACT DOT QED APPLY CUT SPLIT DESTRUCT LEFT RIGHT SIMPL INDUCTION
 /*STATEMENTS*/
 %token THEOREM PROOF INDUCTIVE DEFINE DEFINITION
 %token <int> INT       /* le lexème INT a un attribut entier */
@@ -114,6 +114,7 @@ tactic:
   | EXACT t=lambdaterm { Exact(t) }
   | CUT t=lambdaterm { Cut(t) }
   | SPLIT { Split }
+  | INDUCTION x=VAR { Induction(x) }
   | DESTRUCT h=VAR { Destruct(h) }
   | LEFT { Left }
   | RIGHT { Right }

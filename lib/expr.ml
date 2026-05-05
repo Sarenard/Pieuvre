@@ -45,17 +45,18 @@ type lambdaterm =
 ;;
 
 type tactic = 
-| Intro of string
-| Trivial
-| Exact of lambdaterm
-| Apply of string
-(*| Exact of lambdaterm*)
-| Cut of lambdaterm
-| Split
-| Destruct of string
-| Left
-| Right
-| Simpl
+  | Intro of string
+  | Trivial
+  | Exact of lambdaterm
+  | Apply of string
+  (*| Exact of lambdaterm*)
+  | Cut of lambdaterm
+  | Split
+  | Destruct of string
+  | Left
+  | Right
+  | Simpl
+  | Induction of string
 [@@deriving show]
 ;;
 

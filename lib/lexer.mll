@@ -45,6 +45,7 @@ rule token = parse
   | "exact"             { EXACT }
   | "apply"             { APPLY }
   | "cut"             { CUT }
+  | "induction"             { INDUCTION }
   | "split"           { SPLIT }
   | "destruct"        { DESTRUCT }
   | "left"            { LEFT }
