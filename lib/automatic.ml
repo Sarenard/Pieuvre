@@ -110,9 +110,30 @@ let automatic (content:string) : unit =
       (*We continue the execution*)
       handle_statements (!new_env) xs;
 
+    | SDefinition(name, ty, content)::xs -> 
+      print_endline "DEFINITION !";
+      print_endline name;
+      print_endline (show_lambdaterm ty);
+      print_endline (show_lambdaterm content);
+      print_endline (show_lambdaterm (infer gamma content));
+
+      (*we check that the type is well formed and correct*)
+      check_is_type gamma ty;
+      typecheck gamma content ty;
+
+      (*we make the new env*)
+      let new_env = {
+        gamma = (name, ty) :: gamma.gamma;
+        inductive_types = gamma.inductive_types;
+        values = (name, content) :: gamma.values;
+      } in
+
+      handle_statements new_env xs;
+
+
     | STheorem(_, _)::_ -> failwith "Theorem without proof attached"
     | SProof(_)::_ -> failwith "Proof without theorem attached"
     | [] -> ()
 
-  in handle_statements empty_env elements;
+  in handle_statements (empty_env ()) elements;
 ;;

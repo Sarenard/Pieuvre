@@ -132,6 +132,7 @@ type statement =
   ]>
   *)
   | SInductive of inductive_type
+  | SDefinition of string * lambdaterm * lambdaterm
 [@@deriving show]
 ;;
 
@@ -297,7 +298,8 @@ Do we want to go with a big steps approach?
 *)
 let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
   match term with
-  | Var _ -> None
+  (*TODO : change this and separate in another function (tactic?)*)
+  | Var(x) -> List.assoc_opt x ctx.values
   | Mvar _ -> None
   | Type -> None
   | Inductive(i) -> None
@@ -333,14 +335,15 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
   | App(Constructor(i, j, lst), t) ->
     Some(Constructor(i, j, lst @ [t]))
   | App(Var(x), t) -> (
-    match List.assoc_opt x ctx.gamma with
+    match List.assoc_opt x ctx.values with
     | Some (Constructor (i, j, lst)) -> Some (Constructor (i, j, lst @ [t]))
     | Some (Inductive(i)) -> Some (App(Inductive(i), t))
-    | _ ->
+    | Some v -> Some (App(v, t))
+    | None ->
       match betastep ctx t with
       | Some t' -> Some (App(Var(x), t'))
       | None -> None
-    )
+  )
   | App(f, t) ->
     (match betastep ctx f with
     | Some f' -> Some (App(f', t))
@@ -432,7 +435,7 @@ let equiv (ctx:context) a b =
 We keep that becaue it is easier to give an empty env
 and so that we have it if one day we need to have things in the empty_env
 *)
-let empty_env = { gamma = []; inductive_types = []; values = []};;
+let empty_env () = { gamma = []; inductive_types = []; values = []};;
 
 exception Type_error;;
 exception Unexpected_goal;;
@@ -559,10 +562,28 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
     )
     | _ -> debug "Type error in match"; raise Type_error
   )
-  | Inductive(_) ->
-    assert false;
-  | Constructor(_) ->
-    assert false;
+  | Inductive(i) -> (
+    let (_name, arity, _constructors) = List.nth gamma_ind i in
+    arity
+  )
+  | Constructor(i, j, args) -> (
+    let (_ind_name, _arity, constructors) = List.nth gamma_ind i in
+    let (_ctor_name, ctor_ty) = List.nth constructors j in
+
+    let rec infer_ctor ty remaining_args =
+      match remaining_args with
+      | [] -> ty
+      | arg :: rest -> (
+        match reduce gamma ty with
+        | Pi(x, a, b) ->
+          typecheck gamma arg a;
+          infer_ctor (replace b x arg) rest
+        | _ -> raise Type_error
+      )
+    in
+
+    infer_ctor ctor_ty args
+  )
 
 (*
 Checks that the type of term is ~_alpha-beta to ty

@@ -12,7 +12,7 @@ TODO : some error recovery / indications
 /*TACTICS*/
 %token INTRO TRIVIAL EXACT DOT QED APPLY CUT SPLIT DESTRUCT LEFT RIGHT
 /*STATEMENTS*/
-%token THEOREM PROOF INDUCTIVE DEFINE
+%token THEOREM PROOF INDUCTIVE DEFINE DEFINITION
 %token <int> INT       /* le lexème INT a un attribut entier */
 %token <string> VAR
 
@@ -45,6 +45,7 @@ main_tactic:
 statement: 
   | THEOREM name=VAR COLON t=lambdaterm DOT {STheorem(name, t)}
   | PROOF DOT l=list(tactic_dot) QED DOT {SProof(l)}
+  | DEFINITION name=VAR COLON t=lambdaterm DEFINE def=lambdaterm DOT {SDefinition(name, t, def)}
   (*
   Inductive statements are of the form
   Inductive name : arity :=

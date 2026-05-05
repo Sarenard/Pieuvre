@@ -194,45 +194,45 @@ let test menv ctx e1 e2 =
 
 (*for tests*)
 let unify_run () = 
-  test (fresh_sigma ()) empty_env Type Type; 
-  test (fresh_sigma ()) empty_env (Var("x")) (Var("y")); 
-  test (fresh_sigma ()) empty_env (Var("x")) (Var("x")); 
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ()) Type Type; 
+  test (fresh_sigma ()) (empty_env ()) (Var("x")) (Var("y")); 
+  test (fresh_sigma ()) (empty_env ()) (Var("x")) (Var("x")); 
+  test (fresh_sigma ()) (empty_env ())
     (Pi("x", Type, Var("x")))
     (Pi("y", Type, Var("y")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (Pi("x", Type, Type))
     (Pi("y", Type, Type));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (Pi("x", Type, Var("x")))
     (Pi("y", Type, Var("z")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (Func("x", Type, Var("x")))
     (Func("y", Type, Var("y")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (Func("x", Type, Type))
     (Func("y", Type, Type));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (Func("x", Type, Var("x")))
     (Func("y", Type, Var("z")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x4")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (App(App(App(Var("f"), Var("x1")), Var("x2")), Var("x3")))
     (App(App(Var("f"), Var("x1")), Var("x2")));
-  test (fresh_sigma ()) empty_env (Mvar(0)) (Mvar(1));
-  test (fresh_sigma ()) empty_env (Mvar(2)) (App(Var("f"), Var("x")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ()) (Mvar(0)) (Mvar(1));
+  test (fresh_sigma ()) (empty_env ()) (Mvar(2)) (App(Var("f"), Var("x")));
+  test (fresh_sigma ()) (empty_env ())
     (App(Mvar(0), Mvar(0)))
     (App(Var("x"), Var("x")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (App(Mvar(0), Mvar(0)))
     (App(Var("x"), Var("y")));
-  test (fresh_sigma ()) empty_env
+  test (fresh_sigma ()) (empty_env ())
     (App(
       App(Mvar(0), App(Mvar(1), Mvar(2))),
       App(Mvar(1), App(Mvar(2), Var("z")))

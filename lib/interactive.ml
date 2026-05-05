@@ -42,7 +42,7 @@ Runs one step of the loop "show the UI" + "asks for a tactic"
 let interactive_step (term:lambdaterm) 
 : (lambdaterm * bool) (*(term, should we continue)*) = 
   let term = numerote term in
-  let mygoals = get_goals empty_env term in
+  let mygoals = get_goals (empty_env ()) term in
 
   let mygoal = match mygoals with
   | [] ->
@@ -63,8 +63,8 @@ let interactive_step (term:lambdaterm)
     print_string "Tactic : ";
     print_string (show_tactic tactic);
     print_newline ();
-    let return_term = handle_tactic goal empty_env term tactic in
-    (return_term, (get_goals empty_env return_term <> []))
+    let return_term = handle_tactic goal (empty_env ()) term tactic in
+    (return_term, (get_goals (empty_env ()) return_term <> []))
   )
   | None -> (
       (term, input <> "Qed.")
@@ -92,7 +92,7 @@ let interactive () : unit =
 
   (*We finished*)
   (*We reduce the witness*)
-  current := reduce empty_env !current;
+  current := reduce (empty_env ()) !current;
   (*We show a cool message because we prooved the goal*)
   print_newline ();
   print_endline "No goals remaining.";
@@ -101,7 +101,7 @@ let interactive () : unit =
   print_endline (affiche_lam goal);
   print_endline "Typechecking...";
   try 
-    typecheck empty_env (!current) goal;
+    typecheck (empty_env ()) (!current) goal;
     print_endline "Typechecking was a success !!";
   with Type_error -> print_endline "There is an error somewhere...";
 ;;

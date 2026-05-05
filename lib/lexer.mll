@@ -31,6 +31,7 @@ rule token = parse
   | "Theorem" {THEOREM}
   | "Proof" {PROOF}
   | "Inductive" {INDUCTIVE}
+  | "Definition" {DEFINITION}
 
   | "."             { DOT }
   | "Goal"             { GOAL }
