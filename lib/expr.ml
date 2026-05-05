@@ -43,53 +43,6 @@ type lambdaterm =
 [@@deriving show]
 ;;
 
-let rec affiche_lam ty : string = 
-  let prec = function
-    | Var _ | Type | Inductive(_) | Constructor(_, _, _) | Goal(_) | Mvar _ -> 10
-    | App(_, _) -> 5
-    | Pi(_, _, _) -> 3
-    | Func(_, _, _) -> 1
-    | _ -> 0
-  in
-  let pself = prec ty in
-  let paren e : string = 
-    if prec e <= pself then "(" ^ affiche_lam e ^ ")" else affiche_lam e
-  in
-  let sparen e : string = 
-    if prec e < pself then "(" ^ affiche_lam e ^ ")" else affiche_lam e
-  in
-  match ty with
-  | Var(x) -> x
-  | Mvar(i) -> "(?" ^ string_of_int i ^ ")"
-  | Type -> "Type"
-  | Inductive nb ->
-    "<Inductive(" ^ string_of_int nb ^ ")>";
-  | Constructor(a, b, lt) ->
-    "<Constructor(" ^ string_of_int a ^ ", " ^ string_of_int b ^ ", [" ^ (String.concat "; " (List.map affiche_lam lt)) ^ "])>"
-  | Pi("_", a, b) ->
-    paren a ^ " -> " ^ sparen b
-  | Pi(x, a, b) -> "(" ^ x ^ " : " ^ affiche_lam a ^ ") -> " ^ sparen b
-  | Func(x, a, b) -> "fun " ^ x ^ " : " ^ affiche_lam a ^ " => " ^ affiche_lam b
-  | App(a, b) -> sparen a ^ " " ^ paren b
-  | Goal(_, a) -> "Goal(" ^ affiche_lam a ^ ")"
-  | Prod(a, b) -> paren a ^ " /\\ " ^ paren b
-  | Pair(a, b) -> "(" ^ affiche_lam a ^ ", " ^ affiche_lam b ^ ")"
-  | Fst(a) -> "Fst(" ^ affiche_lam a ^ ")"
-  | Snd(a) -> "Snd(" ^ affiche_lam a ^ ")"
-  | InL(a, b) -> "InL(" ^ affiche_lam a ^ ", " ^ affiche_lam b ^ ")"
-  | InR(a, b) -> "InR(" ^ affiche_lam a ^ ", " ^ affiche_lam b ^ ")"
-  | Sum(a, b) -> paren a ^ " \\/ " ^ paren b
-  | Match(a, b, c) -> "match " ^ affiche_lam a ^ " with " ^ affiche_lam b ^ " || " ^ affiche_lam c
-;;
-
-(*
-We shadow the functions defined by the ppx show
-*)
-let pp_lambdaterm fmt t =
-  Format.pp_print_string fmt (affiche_lam t)
-let show_lambdaterm t =
-  Format.asprintf "%a" pp_lambdaterm t
-
 type tactic = 
 | Intro of string
 | Trivial
@@ -135,6 +88,88 @@ type statement =
   | SDefinition of string * lambdaterm * lambdaterm
 [@@deriving show]
 ;;
+
+let affiche_lam_with_inductives inductive_types ty : string =
+  let rec aux ty =
+    let prec = function
+      | Var _ | Type | Inductive(_) | Constructor(_, _, _) | Goal(_) | Mvar _ -> 10
+      | App(_, _) -> 5
+      | Pi(_, _, _) -> 3
+      | Func(_, _, _) -> 1
+      | _ -> 0
+    in
+    let pself = prec ty in
+    let paren e : string =
+      if prec e <= pself then "(" ^ aux e ^ ")" else aux e
+    in
+    let sparen e : string =
+      if prec e < pself then "(" ^ aux e ^ ")" else aux e
+    in
+    let show_inductive nb =
+      match List.nth_opt inductive_types nb with
+      | Some (name, _, _) -> name
+      | None -> "<Inductive(" ^ string_of_int nb ^ ")>"
+    in
+    let show_constructor ind_idx cst_idx args =
+      match List.nth_opt inductive_types ind_idx with
+      | Some (_, _, constructors) -> (
+          match List.nth_opt constructors cst_idx with
+          | Some (name, _) ->
+              List.fold_left (fun acc arg -> acc ^ " " ^ paren arg) name args
+          | None ->
+              "<Constructor(" ^ string_of_int ind_idx ^ ", " ^ string_of_int cst_idx
+              ^ ", [" ^ String.concat "; " (List.map aux args) ^ "])>"
+        )
+      | None ->
+          "<Constructor(" ^ string_of_int ind_idx ^ ", " ^ string_of_int cst_idx
+          ^ ", [" ^ String.concat "; " (List.map aux args) ^ "])>"
+    in
+    match ty with
+    | Var(x) -> x
+    | Mvar(i) -> "(?" ^ string_of_int i ^ ")"
+    | Type -> "Type"
+    | Inductive nb -> show_inductive nb
+    | Constructor(a, b, lt) -> show_constructor a b lt
+    | Pi("_", a, b) ->
+      paren a ^ " -> " ^ sparen b
+    | Pi(x, a, b) -> "(" ^ x ^ " : " ^ aux a ^ ") -> " ^ sparen b
+    | Func(x, a, b) -> "fun " ^ x ^ " : " ^ aux a ^ " => " ^ aux b
+    | App(a, b) -> sparen a ^ " " ^ paren b
+    | Goal(_, a) -> "Goal(" ^ aux a ^ ")"
+    | Prod(a, b) -> paren a ^ " /\\ " ^ paren b
+    | Pair(a, b) -> "(" ^ aux a ^ ", " ^ aux b ^ ")"
+    | Fst(a) -> "Fst(" ^ aux a ^ ")"
+    | Snd(a) -> "Snd(" ^ aux a ^ ")"
+    | InL(a, b) -> "InL(" ^ aux a ^ ", " ^ aux b ^ ")"
+    | InR(a, b) -> "InR(" ^ aux a ^ ", " ^ aux b ^ ")"
+    | Sum(a, b) -> paren a ^ " \\/ " ^ paren b
+    | Match(a, b, c) -> "match " ^ aux a ^ " with " ^ aux b ^ " || " ^ aux c
+  in
+  aux ty
+;;
+
+let affiche_lam ty : string =
+  affiche_lam_with_inductives [] ty
+;;
+
+let affiche_lam_in_ctx (ctx : context) ty : string =
+  affiche_lam_with_inductives ctx.inductive_types ty
+;;
+
+(*
+We shadow the functions defined by the ppx show
+*)
+let pp_lambdaterm fmt t =
+  Format.pp_print_string fmt (affiche_lam t)
+
+let pp_lambdaterm_in_ctx ctx fmt t =
+  Format.pp_print_string fmt (affiche_lam_in_ctx ctx t)
+
+let show_lambdaterm t =
+  Format.asprintf "%a" pp_lambdaterm t
+
+let show_lambdaterm_in_ctx ctx t =
+  Format.asprintf "%a" (pp_lambdaterm_in_ctx ctx) t
 
 (*
 Checks alpha-equivalence

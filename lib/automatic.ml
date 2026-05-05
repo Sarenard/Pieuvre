@@ -31,7 +31,7 @@ let check_theorem (gamma : context) (theorem : lambdaterm) (proof : tactic list)
 
   if debug then (
     print_endline "Witness of the proof :";
-    print_endline (affiche_lam !term);
+    print_endline (affiche_lam_in_ctx gamma !term);
     print_endline "Typechecking...";
   );
 
@@ -113,9 +113,9 @@ let automatic (content:string) : unit =
     | SDefinition(name, ty, content)::xs -> 
       print_endline "DEFINITION !";
       print_endline name;
-      print_endline (show_lambdaterm ty);
-      print_endline (show_lambdaterm content);
-      print_endline (show_lambdaterm (infer gamma content));
+      print_endline (affiche_lam_in_ctx gamma ty);
+      print_endline (affiche_lam_in_ctx gamma content);
+      print_endline (affiche_lam_in_ctx gamma (infer gamma content));
 
       (*we check that the type is well formed and correct*)
       check_is_type gamma ty;
