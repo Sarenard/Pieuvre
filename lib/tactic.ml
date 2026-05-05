@@ -162,4 +162,9 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
       | Goal(k, Sum(a, b)) when k = i -> InR(a, Goal(k, b))
       | _ -> goal
     in run_replace term replace_goal
+    | Simpl -> let replace_goal goal =
+      match goal with
+      | Goal(k, ty) when k = i -> Goal(k, reduce gamma ty)
+      | _ -> goal
+    in run_replace term replace_goal
 ;;

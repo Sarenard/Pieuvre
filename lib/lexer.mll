@@ -49,6 +49,7 @@ rule token = parse
   | "destruct"        { DESTRUCT }
   | "left"            { LEFT }
   | "right"           { RIGHT }
+  | "simpl"           { SIMPL }
   | "Qed"             { QED } 
 
   | var as s { VAR s }

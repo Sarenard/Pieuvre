@@ -54,6 +54,7 @@ type tactic =
 | Destruct of string
 | Left
 | Right
+| Simpl
 [@@deriving show]
 ;;
 
