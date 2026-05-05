@@ -1,0 +1,13 @@
+Theorem curry : forall A: Type, forall B: Type, forall C: Type, ((A /\ B) -> C) -> A -> B -> C.
+Proof.
+    intro A.
+    intro B.
+    intro C.
+    intro H.
+    intro x.
+    intro y.
+    apply H.
+    split.
+    trivial.
+    trivial.
+Qed.

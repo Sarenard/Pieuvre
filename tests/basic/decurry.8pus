@@ -1,0 +1,12 @@
+Theorem decurry : forall A: Type, forall B: Type, forall C: Type, (A -> B -> C) -> (A /\ B) -> C.
+Proof.
+    intro A.
+    intro B.
+    intro C.
+    intro H.
+    intro H0.
+    destruct H0.
+    apply H.
+    trivial.
+    trivial.
+Qed.

@@ -23,6 +23,11 @@ rule token = parse
   | "\\/"           { OR }
   | ":=" {DEFINE}
   | "|" {PIPE}
+  | "Match" { MATCH }
+  | "Fst" { FST }
+  | "Snd" { SND }
+  | "InL" { INL }
+  | "InR" { INR }
   
   | "forall" {FORALL}
 

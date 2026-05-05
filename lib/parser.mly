@@ -8,7 +8,7 @@ TODO : some error recovery / indications
 
 /* PART 1 : LEXEMES ******* */                                   
 /*GENERAL*/
-%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA AND OR
+%token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA AND OR INL INR FST SND MATCH
 /*TACTICS*/
 %token INTRO TRIVIAL EXACT DOT QED APPLY CUT SPLIT DESTRUCT LEFT RIGHT
 /*STATEMENTS*/
@@ -93,6 +93,13 @@ atom:
   | TYPE { Type }
   | t=VAR { Var t }
   | GOAL LPAREN t=lambdaterm RPAREN { Goal(0, t) }
+  | INL LPAREN t=lambdaterm COMMA ty=lambdaterm RPAREN { InL(t, ty) }
+  | INR LPAREN t=lambdaterm COMMA ty=lambdaterm RPAREN { InR(t, ty) }
+  | FST LPAREN t=lambdaterm RPAREN { Fst(t) }
+  | SND LPAREN t=lambdaterm RPAREN { Snd(t) }
+  | LPAREN t=lambdaterm COMMA t2=lambdaterm RPAREN { Pair(t, t2) }
+  | MATCH LPAREN a=lambdaterm COMMA b=lambdaterm COMMA c=lambdaterm RPAREN { Match(a, b, c) }
+  
   | LPAREN t=lambdaterm RPAREN { t }
 
 /* PARTIE 6 : TACTICS ************************************** */                                                         

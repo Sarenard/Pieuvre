@@ -1,0 +1,10 @@
+Theorem comm_et : forall A : Type, forall B : Type, (A /\ B) -> (B /\ A).
+Proof.
+    intro A.
+    intro B.
+    intro H.
+    destruct H.
+    split.
+    trivial.
+    trivial.
+Qed.

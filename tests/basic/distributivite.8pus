@@ -1,0 +1,35 @@
+Theorem distributivite1 : forall A : Type, forall B : Type, forall C : Type, (A /\ (B \/ C)) -> ((A /\ B) \/ (A /\ C)).
+Proof.
+    intro A.
+    intro B.
+    intro C.
+    intro H.
+    destruct H.
+    destruct H1.
+    left.
+    split.
+    trivial.
+    trivial.
+    right.
+    split.
+    trivial.
+    trivial.
+Qed.
+Theorem distributivite2 : forall A : Type, forall B : Type, forall C : Type, ((A /\ B) \/ (A /\ C)) -> (A /\ (B \/ C)).
+Proof.
+    intro A.
+    intro B.
+    intro C.
+    intro H.
+    destruct H.
+    destruct H0.
+    split.
+    trivial.
+    left.
+    trivial.
+    destruct H0.
+    split.
+    trivial.
+    right.
+    trivial.
+Qed.
