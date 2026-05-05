@@ -1,0 +1,56 @@
+Inductive N : Type :=
+    | Zero : N
+    | Succ : N -> N
+.
+Inductive eq : forall A : Type, A -> A -> Type :=
+    | refl : forall A : Type, forall x : A, eq A x x
+.
+
+Definition add : N -> N -> N :=
+    N_rec
+    (fun (n : N) => N -> N)
+    (fun (m : N) => m)
+    (fun (n : N) (rec : N -> N) (m : N) => Succ (rec m))
+.
+
+Definition one : N := Succ Zero.
+Definition two : N := Succ one.
+Definition three : N := Succ two.
+
+Theorem add_one_two : eq N (add one two) three.
+Proof.
+    exact (refl N three).
+Qed.
+
+Theorem add_zero_n : forall n : N, eq N (add Zero n) n.
+Proof.
+    intro n.
+    simpl.
+    apply refl.
+Qed.
+
+Theorem succ_congr : forall n : N, forall m : N, eq N n m -> eq N (Succ n) (Succ m).
+Proof.
+    exact (
+        fun (n : N) => fun (m : N) => fun (e : eq N n m) =>
+        eq_rec
+        (fun (A : Type) (x : A) (y : A) (i : eq A x y) => forall f : A -> N, eq N (f x) (f y))
+        (fun (A : Type) (x : A) => fun (f : A -> N) => refl N (f x))
+        N n m e
+        (fun (k : N) => Succ k)
+    ).
+Qed.
+
+Theorem add_n_zero : forall n : N, eq N (add n Zero) n.
+Proof.
+    exact (
+        fun (n : N) =>
+        N_rec
+        (fun (k : N) => eq N (add k Zero) k)
+        (refl N Zero)
+        (fun (k : N) (ih : eq N (add k Zero) k) =>
+            succ_congr (add k Zero) k ih
+        )
+        n
+    ).
+Qed.

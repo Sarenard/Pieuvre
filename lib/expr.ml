@@ -343,6 +343,50 @@ let rec replace term x x' = match term with
   | InL(t, t') -> InL(replace t x x', replace t' x x')
   | InR(t, t') -> InR(replace t x x', replace t' x x')
   | Match(t, t', t'') -> Match(replace t x x', replace t' x x', replace t'' x x')
+;;
+
+let rec last = function
+  | [] -> failwith "empty list"
+  | [x] -> x
+  | _ :: xs -> last xs
+
+let rec count_pis = function
+    | Pi(_, _, body) -> 1 + count_pis body
+    | _ -> 0
+
+
+    let rec split_at n lst =
+  if n <= 0 then ([], lst)
+  else
+    match lst with
+    | [] -> ([], [])
+    | x :: xs ->
+      let left, right = split_at (n - 1) xs in
+      (x :: left, right)
+
+  
+let rec last_app = function
+  | App(a, _) -> last_app a
+  | ty -> ty
+
+
+let rec linearize = function
+  | App(f, arg) -> linearize f @ [arg]
+  | head -> [head]
+
+
+let rec instantiate_arg_types ind_name ty args =
+  match ty, args with
+  | Pi(x, a, body), arg :: rest ->
+    let recursive_info =
+      match linearize a with
+      | Var(head_name) :: ind_args when head_name = ind_name -> Some ind_args
+      | _ -> None
+    in
+    let body' = replace body x arg in
+    (arg, a, recursive_info) :: instantiate_arg_types ind_name body' rest
+  | _, [] -> []
+  | _, _ -> []
 
 
 (*
@@ -362,6 +406,19 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
     in
     count_pis recursor_ty
   in
+  let constructor_arity i j =
+    let (_ind_name, _arity, constructors) = List.nth ctx.inductive_types i in
+    let (_ctor_name, ctor_ty) = List.nth constructors j in
+    count_pis ctor_ty
+  in
+  let normalize term =
+    let rec aux t =
+      match betastep ctx t with
+      | Some t' -> aux t'
+      | None -> t
+    in
+    aux term
+  in
   match term with
   | Var(x) -> List.assoc_opt x ctx.values
   | Mvar _ -> None
@@ -369,7 +426,43 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
   | Inductive(i) -> None
   | Recursor(i, args) ->
     if List.length args >= recursor_arity i then
-      failwith "Computation of recursors here"
+      let normalized_args = List.map (reduce ctx) args in
+      let (ind_name, _arity, constructors) = List.nth ctx.inductive_types i in
+      let constructor_count = List.length constructors in
+      let prefix_count = 1 + constructor_count in
+      let prefix_args, tail_args = split_at prefix_count normalized_args in
+      let branch_args =
+        match prefix_args with
+        | _prop :: branches -> branches
+        | [] -> failwith "Malformed recursor application"
+      in
+      match tail_args with
+      | [] -> None
+      | _ ->
+        let scrutinee = last tail_args in
+        match scrutinee with
+        | Constructor(ind_idx, ctor_idx, cargs) when ind_idx = i ->
+          let branch = List.nth branch_args ctor_idx in
+          let (ctor_name, ctor_ty) = List.nth constructors ctor_idx in
+          let arg_infos =
+            List.map
+              (fun (arg_term, arg_ty, recursive_info) ->
+                (arg_term, normalize arg_ty, Option.map (List.map normalize) recursive_info))
+              (instantiate_arg_types ind_name ctor_ty cargs)
+          in
+          let recursive_calls =
+            List.filter_map
+              (fun (arg_term, _arg_ty, recursive_info) ->
+                match recursive_info with
+                | Some ind_args -> Some (Recursor(i, prefix_args @ ind_args @ [arg_term]))
+                | None -> None)
+              arg_infos
+          in
+          let branch_app =
+            List.fold_left (fun acc arg -> App(acc, arg)) branch (cargs @ recursive_calls)
+          in
+          Some branch_app
+        | _ -> None
     else
       let rec aux acc = function
         | [] -> None
@@ -419,10 +512,21 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
         | Some t' -> Some(App(Recursor(i, lst), t'))
         | None -> None)
   | App(Constructor(i, j, lst), t) ->
-    Some(Constructor(i, j, lst @ [t]))
+    if List.length lst < constructor_arity i j then
+      Some(Constructor(i, j, lst @ [t]))
+    else
+      (match betastep ctx t with
+      | Some t' -> Some(App(Constructor(i, j, lst), t'))
+      | None -> None)
   | App(Var(x), t) -> (
     match List.assoc_opt x ctx.values with
-    | Some (Constructor (i, j, lst)) -> Some (Constructor (i, j, lst @ [t]))
+    | Some (Constructor (i, j, lst)) ->
+      if List.length lst < constructor_arity i j then
+        Some (Constructor (i, j, lst @ [t]))
+      else
+        (match betastep ctx t with
+        | Some t' -> Some (App(Var(x), t'))
+        | None -> None)
     | Some (Inductive(i)) -> Some (App(Inductive(i), t))
     | Some (Recursor(i, lst)) ->
       if List.length lst < recursor_arity i then
@@ -503,12 +607,11 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
         | Some t'' -> Some (Match(f, t, t''))
         | None -> None
       ))
-;;
 
 (*
 Full beta reduction
 *)
-let rec reduce (ctx:context) term : lambdaterm =
+and reduce (ctx:context) term : lambdaterm =
   let newterm = betastep ctx term in
   match newterm with
     | Some(inside) -> reduce ctx inside
@@ -516,10 +619,89 @@ let rec reduce (ctx:context) term : lambdaterm =
 ;;
 
 (*
+Weak head normalization
+https://stackoverflow.com/questions/6872898/what-is-weak-head-normal-form
+*)
+let rec whnf (ctx:context) term : lambdaterm =
+  match term with
+  | Var(x) -> (
+    match List.assoc_opt x ctx.values with
+    | Some v -> whnf ctx v
+    | None -> term
+  )
+  | App(f, t) -> (
+    match whnf ctx f with
+    | Func(v, _ty, body) -> whnf ctx (replace body v t)
+    | f' ->
+      (match betastep ctx (App(f', t)) with
+      | Some t' -> whnf ctx t'
+      | None -> App(f', t))
+  )
+  | Fst(t) -> (
+    match whnf ctx t with
+    | Pair(a, _) -> whnf ctx a
+    | t' -> Fst(t')
+  )
+  | Snd(t) -> (
+    match whnf ctx t with
+    | Pair(_, b) -> whnf ctx b
+    | t' -> Snd(t')
+  )
+  | Match(t, l, r) -> (
+    match whnf ctx t with
+    | InL(a, _) -> whnf ctx (App(l, a))
+    | InR(_, b) -> whnf ctx (App(r, b))
+    | t' -> Match(t', l, r)
+  )
+  | Recursor(_, _)
+  | Constructor(_, _, _) ->
+    (match betastep ctx term with
+    | Some t' -> whnf ctx t'
+    | None -> term)
+  | _ -> term
+;;
+
+(*
 Alpha-beta equivalence
 *)
-let equiv (ctx:context) a b = 
-  alpha (reduce ctx a) (reduce ctx b)
+let rec equiv (ctx:context) a b =
+  let rec conv a b =
+    let a = whnf ctx a in
+    let b = whnf ctx b in
+    if alpha a b then
+      true
+    else
+      match (a, b) with
+      | Pi(x, a1, b1), Pi(y, a2, b2)
+      | Func(x, a1, b1), Func(y, a2, b2) ->
+        let spoiled = unfresh a @ unfresh b in
+        let fresh = get_fresh x spoiled in
+        conv a1 a2
+        && conv (replace b1 x (Var fresh)) (replace b2 y (Var fresh))
+      | App(f1, t1), App(f2, t2)
+      | Pair(f1, t1), Pair(f2, t2)
+      | Prod(f1, t1), Prod(f2, t2)
+      | Sum(f1, t1), Sum(f2, t2)
+      | InL(f1, t1), InL(f2, t2)
+      | InR(f1, t1), InR(f2, t2) ->
+        conv f1 f2 && conv t1 t2
+      | Goal(_, t1), Goal(_, t2)
+      | Fst(t1), Fst(t2)
+      | Snd(t1), Snd(t2) -> conv t1 t2
+      | Inductive i1, Inductive i2 -> i1 = i2
+      | Recursor(i1, args1), Recursor(i2, args2)
+        when i1 = i2 && List.length args1 = List.length args2 ->
+        List.for_all2 conv args1 args2
+      | Constructor(i1, c1, args1), Constructor(i2, c2, args2)
+        when i1 = i2 && c1 = c2 && List.length args1 = List.length args2 ->
+        List.for_all2 conv args1 args2
+      | Match(a1, b1, c1), Match(a2, b2, c2) ->
+        conv a1 a2 && conv b1 b2 && conv c1 c2
+      | Type, Type -> true
+      | Var(x), Var(y) -> String.equal x y
+      | _ -> false
+  in
+  conv a b
 ;;
 
 (*

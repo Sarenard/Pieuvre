@@ -1,0 +1,20 @@
+Inductive N : Type :=
+    | Zero : N
+    | Succ : N -> N
+.
+Inductive eq : forall A : Type, A -> A -> Type :=
+    | refl : forall A : Type, forall x : A, eq A x x
+.
+
+Definition add : N -> N -> N :=
+    N_rec 
+    (fun (n : N) => N -> N) 
+    (fun (m : N) => m)
+    (fun (n : N) (rec : N -> N) (m : N) => Succ (rec m))
+.
+
+Theorem add_zero_zero : eq N (add Zero Zero) Zero.
+Proof.
+    simpl.
+    apply refl.
+Qed.

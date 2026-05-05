@@ -73,33 +73,34 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
           let sigma = fresh_sigma () in
           let meta_types : (int, lambdaterm) Hashtbl.t = Hashtbl.create 16 in
           (*does the substitution*)
-          let rec materialize_term tm =
+          let rec materialize_term sigma tm =
             match apply_sigma sigma tm with
             | Mvar j -> (
               match Hashtbl.find_opt meta_types j with
-              | Some meta_ty -> Goal(0, materialize_term meta_ty)
+              | Some meta_ty -> Goal(0, materialize_term sigma meta_ty)
               | None -> Mvar j
             )
             | Var _ | Type | Inductive _ as tm -> tm
             | Recursor(ind, args) ->
-              Recursor(ind, List.map materialize_term args)
-            | Goal(goal_id, tm) -> Goal(goal_id, materialize_term tm)
-            | App(t1, t2) -> App(materialize_term t1, materialize_term t2)
-            | Pi(arg, a, b) -> Pi(arg, materialize_term a, materialize_term b)
-            | Func(arg, a, b) -> Func(arg, materialize_term a, materialize_term b)
+              Recursor(ind, List.map (materialize_term sigma) args)
+            | Goal(goal_id, tm) -> Goal(goal_id, materialize_term sigma tm)
+            | App(t1, t2) -> App(materialize_term sigma t1, materialize_term sigma t2)
+            | Pi(arg, a, b) -> Pi(arg, materialize_term sigma a, materialize_term sigma b)
+            | Func(arg, a, b) -> Func(arg, materialize_term sigma a, materialize_term sigma b)
             | Constructor(ind, cst, args) ->
-              Constructor(ind, cst, List.map materialize_term args)
-            | Fst(x) -> Fst(materialize_term x)
-            | Snd(x) -> Snd(materialize_term x)
-            | Prod(a, b) -> Prod(materialize_term a, materialize_term b)
-            | Pair(a, b) -> Pair(materialize_term a, materialize_term b)
-            | Sum(a, b) -> Sum(materialize_term a, materialize_term b)
-            | InL(a, b) -> InL(materialize_term a, materialize_term b)
-            | InR(a, b) -> InR(materialize_term a, materialize_term b)
-            | Match(a, b, c) -> Match(materialize_term a, materialize_term b, materialize_term c)
+              Constructor(ind, cst, List.map (materialize_term sigma) args)
+            | Fst(x) -> Fst(materialize_term sigma x)
+            | Snd(x) -> Snd(materialize_term sigma x)
+            | Prod(a, b) -> Prod(materialize_term sigma a, materialize_term sigma b)
+            | Pair(a, b) -> Pair(materialize_term sigma a, materialize_term sigma b)
+            | Sum(a, b) -> Sum(materialize_term sigma a, materialize_term sigma b)
+            | InL(a, b) -> InL(materialize_term sigma a, materialize_term sigma b)
+            | InR(a, b) -> InR(materialize_term sigma a, materialize_term sigma b)
+            | Match(a, b, c) -> Match(materialize_term sigma a, materialize_term sigma b, materialize_term sigma c)
           in
           let rec collect_args args fty =
             let fty = reduce big_gamma (apply_sigma sigma fty) in
+            let ty = reduce big_gamma ty in
             try
               let sigma' = unify sigma big_gamma fty ty in
               Some (sigma', List.rev args)
@@ -116,9 +117,9 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
           in (
             match collect_args [] fty with
             | Some (_, []) -> Var x
-            | Some (_, args) ->
+            | Some (sigma', args) ->
               List.fold_left
-                (fun acc arg -> App(acc, materialize_term arg))
+                (fun acc arg -> App(acc, materialize_term sigma' arg))
                 (Var x)
                 args
             | None -> goal
