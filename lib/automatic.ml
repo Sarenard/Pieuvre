@@ -105,7 +105,7 @@ let automatic (content:string) : unit =
       new_env := { 
           gamma = (name ^ "_rec", recursor) :: (!new_env).gamma;
           inductive_types = (!new_env).inductive_types;
-          values = (!new_env).values; 
+          values = (name ^ "_rec", Recursor(i, [])) :: (!new_env).values; 
       };
       (*We continue the execution*)
       handle_statements (!new_env) xs;

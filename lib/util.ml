@@ -25,6 +25,7 @@ let get_goals (gamma:context) (term:lambdaterm) =
       | App(a, b) | Prod(a, b) | Pair(a, b) | Sum(a, b) | InL(a, b) | InR(a, b) -> (get_goals_aux gamma a)@(get_goals_aux gamma b)
       | Goal(i, a) -> [(i, gamma, a)]
       | Inductive(_) -> []
+      | Recursor(_, lst)
       | Constructor(_, _, lst) -> List.concat_map (get_goals_aux gamma) lst
       | Fst(x) | Snd(x) -> get_goals_aux gamma x
       | Match(a, b, c) -> get_goals_aux gamma a @ get_goals_aux gamma b @ get_goals_aux gamma c
@@ -47,6 +48,7 @@ let numerote (term:lambdaterm) : lambdaterm =
     | Func (x, a, b) -> Func (x, dfs a, dfs b)
     | App (a, b) -> App (dfs a, dfs b)
     | Inductive(_) -> term
+    | Recursor(i, args) -> Recursor(i, List.map dfs args)
     | Constructor(i, j, args) -> Constructor(i, j, List.map dfs args)
     | Fst (x) -> Fst (dfs x)
     | Snd (x) -> Snd (dfs x)
@@ -71,6 +73,7 @@ let rec run_replace (term:lambdaterm) (func : lambdaterm -> lambdaterm) : lambda
   | Func (x, a, b) -> Func (x, run_replace a func, run_replace b func)
   | App (a, b) -> App (run_replace a func, run_replace b func)
   | Inductive(_) -> term
+  | Recursor(i, lst) -> Recursor(i, List.map (fun t -> run_replace t func) lst)
   | Constructor(i, j, lst) -> Constructor(i, j, List.map (fun t -> run_replace t func) lst)
   | Fst (a) -> Fst(run_replace a func)
   | Snd (a) -> Snd(run_replace a func)

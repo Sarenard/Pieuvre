@@ -34,6 +34,7 @@ let rec occurs_mvar (i : int) (term : lt) : bool =
   match term with
   | Mvar j -> i = j
   | Var _ | Type | Inductive _ -> false
+  | Recursor(_, args) -> List.exists (occurs_mvar i) args
   | Goal(_, t)
   | Fst(t)
   | Snd(t) -> occurs_mvar i t
@@ -53,6 +54,8 @@ let rec substitute_mvar (i : int) (replacement : lt) (term : lt) : lt =
   match term with
   | Mvar j -> if i = j then replacement else term
   | Var _ | Type | Inductive _ -> term
+  | Recursor(ind, args) ->
+    Recursor(ind, List.map (substitute_mvar i replacement) args)
   | Goal(goal_id, t) -> Goal(goal_id, substitute_mvar i replacement t)
   | App(t1, t2) ->
     App(substitute_mvar i replacement t1, substitute_mvar i replacement t2)
@@ -80,6 +83,8 @@ let rec apply_sigma (sigma : sigma) (term : lt) : lt =
       | None -> term
     )
   | Var _ | Type | Inductive _ -> term
+  | Recursor(ind, args) ->
+    Recursor(ind, List.map (apply_sigma sigma) args)
   | Goal(goal_id, t) -> Goal(goal_id, apply_sigma sigma t)
   | App(t1, t2) -> App(apply_sigma sigma t1, apply_sigma sigma t2)
   | Pi(x, t1, t2) -> Pi(x, apply_sigma sigma t1, apply_sigma sigma t2)
@@ -161,6 +166,9 @@ let rec unify (sigma0:sigma) (ctx:context) (e1:lt) (e2:lt) : sigma =
     instantiate_meta sigma0 i t
   | Inductive i, Inductive j when i = j ->
     sigma0
+  | Recursor(i1, args1), Recursor(i2, args2)
+    when i1 = i2 && List.length args1 = List.length args2 ->
+    unify_pairs sigma0 ctx args1 args2
   | Constructor(i1, c1, args1), Constructor(i2, c2, args2)
     when i1 = i2 && c1 = c2 && List.length args1 = List.length args2 ->
     unify_pairs sigma0 ctx args1 args2

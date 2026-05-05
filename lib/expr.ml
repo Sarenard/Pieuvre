@@ -22,6 +22,7 @@ type lambdaterm =
   (*Inductive*)
   (*indice dans la liste des inductifs*)
   | Inductive of int
+  | Recursor of int * lambdaterm list
   (*indice dans la liste des inductifs, id_constru, (liste des args du constructeur)*)
   | Constructor of int * int * lambdaterm list
 
@@ -93,7 +94,7 @@ type statement =
 let affiche_lam_with_inductives inductive_types ty : string =
   let rec aux ty =
     let prec = function
-      | Var _ | Type | Inductive(_) | Constructor(_, _, _) | Goal(_) | Mvar _ -> 10
+      | Var _ | Type | Inductive(_) | Recursor(_, _) | Constructor(_, _, _) | Goal(_) | Mvar _ -> 10
       | App(_, _) -> 5
       | Pi(_, _, _) -> 3
       | Func(_, _, _) -> 1
@@ -110,6 +111,14 @@ let affiche_lam_with_inductives inductive_types ty : string =
       match List.nth_opt inductive_types nb with
       | Some (name, _, _) -> name
       | None -> "<Inductive(" ^ string_of_int nb ^ ")>"
+    in
+    let show_recursor ind_idx args =
+      match List.nth_opt inductive_types ind_idx with
+      | Some (name, _, _) ->
+          List.fold_left (fun acc arg -> acc ^ " " ^ paren arg) (name ^ "_rec") args
+      | None ->
+          "<Recursor(" ^ string_of_int ind_idx ^ ", ["
+          ^ String.concat "; " (List.map aux args) ^ "])>"
     in
     let show_constructor ind_idx cst_idx args =
       match List.nth_opt inductive_types ind_idx with
@@ -130,6 +139,7 @@ let affiche_lam_with_inductives inductive_types ty : string =
     | Mvar(i) -> "(?" ^ string_of_int i ^ ")"
     | Type -> "Type"
     | Inductive nb -> show_inductive nb
+    | Recursor(ind_idx, args) -> show_recursor ind_idx args
     | Constructor(a, b, lt) -> show_constructor a b lt
     | Pi("_", a, b) ->
       paren a ^ " -> " ^ sparen b
@@ -201,6 +211,10 @@ let alpha term1 term2 =
         alpha_aux env12 env21 f1 f2
         && alpha_aux env12 env21 x1 x2
     | Inductive i1, Inductive i2 -> i1 = i2
+    | Recursor (i1, args1), Recursor (i2, args2) ->
+        i1 = i2
+        && List.length args1 = List.length args2
+        && List.for_all2 (alpha_aux env12 env21) args1 args2
     | Constructor (c1, i1, args1), Constructor (c2, i2, args2) ->
         c1 = c2
         && i1 = i2
@@ -234,10 +248,11 @@ let rec free_and_bound term bound = match term with
   | Type -> ([], bound)
   | Mvar(_) -> ([], bound)
   | Inductive(_) -> ([], bound) 
+  | Recursor(_, args)
   | Constructor(_, _, args) ->
     List.fold_left
       (fun (free_acc, bound_acc) arg ->
-        let (free_arg, bound_arg) = free_and_bound arg bound_acc in
+        let (free_arg, bound_arg) = free_and_bound arg bound in
         (free_acc @ free_arg, bound_acc @ bound_arg))
       ([], bound)
       args
@@ -316,6 +331,8 @@ let rec replace term x x' = match term with
   | Type -> term
   | Goal(i, tm) -> Goal(i, replace tm x x')
   | Inductive(i) -> term
+  | Recursor(i, args) ->
+    Recursor(i, List.map (fun arg -> replace arg x x') args)
   | Constructor(i, j, args) ->
     Constructor(i, j, List.map (fun arg -> replace arg x x') args)
   | Fst(t) -> Fst(replace t x x')
@@ -333,12 +350,35 @@ Does one step of a beta-reduction
 Do we want to go with a big steps approach?
 *)
 let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
+  let rec count_pis = function
+    | Pi(_, _, body) -> 1 + count_pis body
+    | _ -> 0
+  in
+  let recursor_arity i =
+    let (ind_name, _arity, _constructors) = List.nth ctx.inductive_types i in
+    let recursor_ty =
+      try List.assoc (ind_name ^ "_rec") ctx.gamma
+      with Not_found -> failwith ("Missing recursor type for " ^ ind_name)
+    in
+    count_pis recursor_ty
+  in
   match term with
-  (*TODO : change this and separate in another function (tactic?)*)
   | Var(x) -> List.assoc_opt x ctx.values
   | Mvar _ -> None
   | Type -> None
   | Inductive(i) -> None
+  | Recursor(i, args) ->
+    if List.length args >= recursor_arity i then
+      failwith "Computation of recursors here"
+    else
+      let rec aux acc = function
+        | [] -> None
+        | t :: q ->
+            match betastep ctx t with
+            | Some t' -> Some (Recursor(i, List.rev_append acc (t' :: q)))
+            | None -> aux (t :: acc) q
+      in
+      aux [] args
   | Constructor(i, j, args) ->
     let rec aux acc = function
       | [] -> None
@@ -368,12 +408,27 @@ let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
       | None -> None)
   | App(Func(v, _ty, body), t) ->
     Some (replace body v t)
+  | App(Recursor(i, lst), t) ->
+    if List.length lst < recursor_arity i then
+      Some(Recursor(i, lst @ [t]))
+    else
+      (match betastep ctx (Recursor(i, lst)) with
+      | Some rec' -> Some(App(rec', t))
+      | None ->
+        match betastep ctx t with
+        | Some t' -> Some(App(Recursor(i, lst), t'))
+        | None -> None)
   | App(Constructor(i, j, lst), t) ->
     Some(Constructor(i, j, lst @ [t]))
   | App(Var(x), t) -> (
     match List.assoc_opt x ctx.values with
     | Some (Constructor (i, j, lst)) -> Some (Constructor (i, j, lst @ [t]))
     | Some (Inductive(i)) -> Some (App(Inductive(i), t))
+    | Some (Recursor(i, lst)) ->
+      if List.length lst < recursor_arity i then
+        Some (Recursor(i, lst @ [t]))
+      else
+        Some (App(Recursor(i, lst), t))
     | Some v -> Some (App(v, t))
     | None ->
       match betastep ctx t with
@@ -602,6 +657,27 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
     let (_name, arity, _constructors) = List.nth gamma_ind i in
     arity
   )
+  | Recursor(i, args) -> (
+    let (ind_name, _arity, _constructors) = List.nth gamma_ind i in
+    let recursor_ty =
+      try List.assoc (ind_name ^ "_rec") gamma_var
+      with Not_found -> raise Type_error
+    in
+
+    let rec infer_spine ty remaining_args =
+      match remaining_args with
+      | [] -> ty
+      | arg :: rest -> (
+        match reduce gamma ty with
+        | Pi(x, a, b) ->
+          typecheck gamma arg a;
+          infer_spine (replace b x arg) rest
+        | _ -> raise Type_error
+      )
+    in
+
+    infer_spine recursor_ty args
+  )
   | Constructor(i, j, args) -> (
     let (_ind_name, _arity, constructors) = List.nth gamma_ind i in
     let (_ctor_name, ctor_ty) = List.nth constructors j in
@@ -643,6 +719,7 @@ let rec occurs_bound bound name term =
   | Type -> false
   | Mvar _ -> false
   | Inductive(i) -> false
+  | Recursor(i, args) -> List.exists (occurs_bound bound name) args
   | Constructor(i, j, args) -> List.exists (occurs_bound bound name) args
   | Goal (_, a) -> occurs_bound bound name a
   | Pi (x, a, b) ->

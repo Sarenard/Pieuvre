@@ -81,6 +81,8 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
               | None -> Mvar j
             )
             | Var _ | Type | Inductive _ as tm -> tm
+            | Recursor(ind, args) ->
+              Recursor(ind, List.map materialize_term args)
             | Goal(goal_id, tm) -> Goal(goal_id, materialize_term tm)
             | App(t1, t2) -> App(materialize_term t1, materialize_term t2)
             | Pi(arg, a, b) -> Pi(arg, materialize_term a, materialize_term b)
