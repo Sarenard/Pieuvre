@@ -1,0 +1,34 @@
+Inductive N : Type :=
+    | Zero : N
+    | Succ : N -> N
+.
+
+Inductive lt : N -> N -> Type :=
+    | lt_zero_succ : forall n : N, lt Zero (Succ n)
+    | lt_succ : forall n : N, forall m : N, lt n m -> lt (Succ n) (Succ m)
+.
+
+Definition add : N -> N -> N :=
+    N_rec
+    (fun (n : N) => N -> N)
+    (fun (m : N) => m)
+    (fun (n : N) (rec : N -> N) (m : N) => Succ (rec m))
+.
+
+Definition mult : N -> N -> N :=
+    N_rec
+    (fun (n : N) => N -> N)
+    (fun (m : N) => Zero)
+    (fun (n : N) (rec : N -> N) (m : N) => add m (rec m))
+.
+
+Definition n3 : N := Succ (Succ (Succ (Zero))).
+Definition n4 : N := Succ (Succ (Succ (Succ (Zero)))).
+Definition n12 : N := mult n3 n4.
+Definition n144 : N := mult n12 n12.
+
+Theorem zero_lt_144 : lt Zero n144.
+Proof.
+    simpl.
+    apply lt_zero_succ.
+Qed.
