@@ -19,7 +19,7 @@ Definition three : N := Succ two.
 
 Theorem add_one_two : eq N (add one two) three.
 Proof.
-    exact (refl N three).
+    apply refl.
 Qed.
 
 Theorem add_zero_n : forall n : N, eq N (add Zero n) n.
