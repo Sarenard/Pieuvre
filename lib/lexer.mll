@@ -51,7 +51,8 @@ rule token = parse
   | "left"            { LEFT }
   | "right"           { RIGHT }
   | "simpl"           { SIMPL }
-  | "Qed"             { QED } 
+  | "Qed"             { MEOW } 
+  | "Meow"            { MEOW }
 
   | var as s { VAR s }
   

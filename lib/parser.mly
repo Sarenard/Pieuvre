@@ -10,7 +10,7 @@ TODO : some error recovery / indications
 /*GENERAL*/
 %token FUN COLON LPAREN RPAREN EOF BIGARROW SMALLARROW GOAL PIPE TYPE FORALL COMMA AND OR INL INR FST SND MATCH
 /*TACTICS*/
-%token INTRO TRIVIAL EXACT DOT QED APPLY CUT SPLIT DESTRUCT LEFT RIGHT SIMPL INDUCTION
+%token INTRO TRIVIAL EXACT DOT MEOW APPLY CUT SPLIT DESTRUCT LEFT RIGHT SIMPL INDUCTION
 /*STATEMENTS*/
 %token THEOREM PROOF INDUCTIVE DEFINE DEFINITION
 %token <int> INT       /* le lexème INT a un attribut entier */
@@ -44,7 +44,7 @@ main_tactic:
 
 statement: 
   | THEOREM name=VAR COLON t=lambdaterm DOT {STheorem(name, t)}
-  | PROOF DOT l=list(tactic_dot) QED DOT {SProof(l)}
+  | PROOF DOT l=list(tactic_dot) MEOW DOT {SProof(l)}
   | DEFINITION name=VAR COLON t=lambdaterm DEFINE def=lambdaterm DOT {SDefinition(name, t, def)}
   (*
   Inductive statements are of the form

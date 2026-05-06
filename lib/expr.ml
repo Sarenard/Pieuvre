@@ -617,6 +617,12 @@ and reduce (ctx:context) term : lambdaterm =
   match newterm with
     | Some(inside) -> reduce ctx inside
     | None -> term
+
+and reduce_debug (ctx:context) term : lambdaterm =
+  let newterm = betastep ctx term in
+  match newterm with
+    | Some(inside) -> print_endline (affiche_lam inside); reduce_debug ctx inside
+    | None -> term
 ;;
 
 (*
