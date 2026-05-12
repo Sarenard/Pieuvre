@@ -130,17 +130,13 @@ we go back to an easier unification algorithm
 *)
 (*TODO : add reductions*)
 let rec unify (sigma0:sigma) (ctx:context) (e1:lt) (e2:lt) : sigma =
-  let e1 = apply_sigma sigma0 e1 in
-  let e2 = apply_sigma sigma0 e2 in
+  let e1 = whnf ctx (apply_sigma sigma0 e1) in
+  let e2 = whnf ctx (apply_sigma sigma0 e2) in
   match (e1, e2) with
-  (*TYPE-SAME*)
   | (Type, Type) -> sigma0
-  (*VAR-SAME*)
-  (*RIGID-SAME*) (*we dont use E right now*)
   | (Var(x), Var(y)) ->
     if x <> y then raise (UnificationError(e1, e2));
     sigma0
-  (*PROD-SAME and LAM-SAME*)
   | (Pi(x, t1, t2), Pi(y, u1, u2))
   | (Func(x, t1, t2), Func(y, u1, u2)) ->
     (*we \alpha-rename both*)

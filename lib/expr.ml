@@ -30,6 +30,7 @@ type lambdaterm =
   | Mvar of mvar (*?x*)
 
   (* produits *)
+  (*TODO : remove that (its a pi isnt it?)*)
   | Prod of lambdaterm * lambdaterm (* le type *)
   | Pair of lambdaterm * lambdaterm
   | Fst of lambdaterm
@@ -56,6 +57,7 @@ type tactic =
   | Left
   | Right
   | Simpl
+  | Step
   | Induction of string
 [@@deriving show]
 ;;
@@ -297,6 +299,7 @@ let get_fresh v lst =
     if List.mem candidate lst then find (n + 1)
     else candidate
   in find number
+;;
 
 (*
 replaces x with x' in term
@@ -350,13 +353,14 @@ let rec last = function
   | [] -> failwith "empty list"
   | [x] -> x
   | _ :: xs -> last xs
+;;
 
 let rec count_pis = function
     | Pi(_, _, body) -> 1 + count_pis body
     | _ -> 0
+;;
 
-
-    let rec split_at n lst =
+let rec split_at n lst =
   if n <= 0 then ([], lst)
   else
     match lst with
@@ -364,17 +368,17 @@ let rec count_pis = function
     | x :: xs ->
       let left, right = split_at (n - 1) xs in
       (x :: left, right)
-
+;;
   
 let rec last_app = function
   | App(a, _) -> last_app a
   | ty -> ty
-
+;;
 
 let rec linearize = function
   | App(f, arg) -> linearize f @ [arg]
   | head -> [head]
-
+;;
 
 let rec instantiate_arg_types ind_name ty args =
   match ty, args with
@@ -671,7 +675,7 @@ let rec whnf (ctx:context) term : lambdaterm =
 (*
 Alpha-beta equivalence
 *)
-let rec equiv (ctx:context) a b =
+let equiv (ctx:context) a b =
   let rec conv a b =
     let a = whnf ctx a in
     let b = whnf ctx b in
@@ -871,19 +875,19 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
     let (_ind_name, _arity, constructors) = List.nth gamma_ind i in
     let (_ctor_name, ctor_ty) = List.nth constructors j in
 
-    let rec infer_ctor ty remaining_args =
+    let rec infer_constructor ty remaining_args =
       match remaining_args with
       | [] -> ty
       | arg :: rest -> (
         match reduce gamma ty with
         | Pi(x, a, b) ->
           typecheck gamma arg a;
-          infer_ctor (replace b x arg) rest
+          infer_constructor (replace b x arg) rest
         | _ -> raise Type_error
       )
     in
 
-    infer_ctor ctor_ty args
+    infer_constructor ctor_ty args
   )
 
 (*

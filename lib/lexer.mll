@@ -51,6 +51,7 @@ rule token = parse
   | "left"            { LEFT }
   | "right"           { RIGHT }
   | "simpl"           { SIMPL }
+  | "step"           { STEP }
   | "Qed"             { MEOW } 
   | "Meow"            { MEOW }
 

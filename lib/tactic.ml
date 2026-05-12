@@ -45,14 +45,6 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
       | Goal(k, ty) when k=i ->
         begin
           try 
-            (*TODO : remove this because we have a better system of error handling !*)
-            let debug = false in
-            if debug then (
-              print_endline ("t = " ^ (affiche_lam t));
-              print_endline ("reduce t = " ^ (affiche_lam (reduce gamma t)));
-              print_endline ("ty = " ^ (affiche_lam ty));
-              print_endline ("infered t = " ^ (affiche_lam (infer gamma t)));
-            );
             typecheck big_gamma t ty;
             t
           with Type_error -> goal
@@ -99,8 +91,6 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
             | Match(a, b, c) -> Match(materialize_term sigma a, materialize_term sigma b, materialize_term sigma c)
           in
           let rec collect_args args fty =
-            let fty = reduce big_gamma (apply_sigma sigma fty) in
-            let ty = reduce big_gamma ty in
             try
               let sigma' = unify sigma big_gamma fty ty in
               Some (sigma', List.rev args)
@@ -180,4 +170,13 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
           | _ -> goal
         in run_replace term replace_goal
     )
+    | Step -> let replace_goal goal =
+      match goal with
+      | Goal(k, ty) when k = i -> (
+        match betastep gamma ty with
+        | Some(t) -> Goal(k, t)
+        | None -> Goal(k, ty)
+      )
+      | _ -> goal
+    in run_replace term replace_goal
 ;;
