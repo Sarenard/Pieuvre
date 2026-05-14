@@ -17,6 +17,15 @@ let run () =
     ] 
     (fun s -> nom_fichier := s)
     "";
+  if !reduce then 
+    failwith "TODO : REDUCE" 
+  else
+  if !alpha then 
+    failwith "TODO : ALPHA" 
+  else
+  if !typecheck then 
+    failwith "TODO : TYPECHECK" 
+  else
   match !nom_fichier with
     | "" -> (
       (*Interactive UI*)
