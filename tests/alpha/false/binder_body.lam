@@ -1,0 +1,1 @@
+(fun (x : Type) => fun (z : Type) => x) & (fun (x : Type) => fun (z : Type) => z)

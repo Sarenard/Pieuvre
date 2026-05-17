@@ -1,0 +1,1 @@
+(fun (x : Type) => x x) & (fun (y : Type) => y)

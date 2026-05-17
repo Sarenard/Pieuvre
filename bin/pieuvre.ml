@@ -21,14 +21,19 @@ let run () =
     "";
   if !reduce then (
     match !nom_fichier with
-    | "" -> failwith "Merci d'indiquer un fichier en argument."
+    | "" -> failwith "Please input a file."
     | filename -> 
       let content = In_channel.with_open_text filename In_channel.input_all in 
       reduce_opt content;
   )
   else
-  if !alpha then 
-    failwith "TODO : ALPHA" 
+  if !alpha then (
+    match !nom_fichier with
+    | "" -> failwith "Please input a file."
+    | filename ->
+      let content = In_channel.with_open_text filename In_channel.input_all in
+      alpha_opt content
+  )
   else
   if !typecheck then 
     failwith "TODO : TYPECHECK" 
