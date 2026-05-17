@@ -1,0 +1,20 @@
+Fst(
+  ((fun (z : Type) =>
+      Match(
+        InL(
+          ((fun (a : Type) => a)
+            ((fun (b : Type) => b)
+              ((fun (c : Type) => c)
+                ((fun (d : Type) => d) Type)))),
+          Type
+        ),
+        (fun (u : Type) =>
+          (
+            ((fun (v : Type) => v) ((fun (v2 : Type) => v2) u)),
+            ((fun (w : Type) => w) ((fun (w2 : Type) => w2) Type))
+          )
+        ),
+        (fun (u : Type) => (u, u))
+      )
+    ) Type)
+)

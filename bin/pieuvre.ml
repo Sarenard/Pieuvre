@@ -1,6 +1,8 @@
 open Lib
 open! Interactive
 open Automatic
+open Util
+open Options
 
 let nom_fichier = ref ""
 
@@ -17,8 +19,13 @@ let run () =
     ] 
     (fun s -> nom_fichier := s)
     "";
-  if !reduce then 
-    failwith "TODO : REDUCE" 
+  if !reduce then (
+    match !nom_fichier with
+    | "" -> failwith "Merci d'indiquer un fichier en argument."
+    | filename -> 
+      let content = In_channel.with_open_text filename In_channel.input_all in 
+      reduce_opt content;
+  )
   else
   if !alpha then 
     failwith "TODO : ALPHA" 

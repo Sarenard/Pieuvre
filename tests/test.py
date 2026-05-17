@@ -44,6 +44,37 @@ def test_should_be_ok(file):
 
     return ok
 
+def test_reduce_should_be_ok(file):
+    answer_file = os.path.join(os.path.dirname(file), "term.answer")
+    fouine_result = subprocess.run(
+        [EXECUTABLE_PATH, "-reduce", file],
+        capture_output=True,
+        text=True,
+    )
+
+    try:
+        with open(answer_file, "r") as f:
+            expected = f.read().strip()
+    except OSError:
+        cprint(f"Missing answer file for {file}", "red")
+        return False
+
+    stdout_lines = [line.strip() for line in fouine_result.stdout.splitlines() if line.strip() != ""]
+    actual = stdout_lines[-1] if stdout_lines else ""
+
+    ok = fouine_result.returncode == 0 and actual == expected
+
+    if ok:
+        cprint(f"Reduce test {file} passed", "green")
+    else:
+        cprint(f"Reduce error in {file}", "red")
+        cprint(f"Expected : {expected}", "red")
+        cprint(f"Actual : {actual}", "red")
+        cprint(f"Stdout : {fouine_result.stdout}", "red")
+        cprint(f"Stderr : {fouine_result.stderr}", "red")
+
+    return ok
+
 cprint("Building Project", "green")
 try:
     caml_result = subprocess.run(
@@ -61,6 +92,7 @@ ml_files = [
     for f in files
     if f.endswith(".8pus") and "temp.8pus" not in f 
     and "ShouldFail" not in root.split(os.sep)
+    and "reduce" not in root.split(os.sep)
 ]
 
 should_fail_files = [
@@ -71,13 +103,21 @@ should_fail_files = [
     and "ShouldFail" in root.split(os.sep)
 ]
 
-nb_test = len(ml_files) + len(should_fail_files)
+reduce_files = [
+    os.path.join(root, "term.lam")
+    for root, dirs, files in os.walk("tests/reduce")
+    if "term.lam" in files
+]
+
+nb_test = len(ml_files) + len(should_fail_files) + len(reduce_files)
 
 total = 0
 for file in ml_files:
     total += test_should_be_ok(file)
 for file in should_fail_files:
     total += test_should_fail(file)
+for file in reduce_files:
+    total += test_reduce_should_be_ok(file)
 
 print()
 if total == nb_test:

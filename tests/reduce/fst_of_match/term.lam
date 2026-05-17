@@ -1,0 +1,7 @@
+Fst(
+  Match(
+    InL(((fun (x : Type) => x) Type), Type),
+    (fun (u : Type) => (u, ((fun (v : Type) => v) Type))),
+    (fun (u : Type) => (u, u))
+  )
+)

@@ -1,0 +1,1 @@
+((fun (p : Type /\ Type) => Fst(p)) (Type, ((fun (x : Type) => x) Type)))
