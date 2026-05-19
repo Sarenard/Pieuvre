@@ -23,6 +23,9 @@ TODO : some error recovery / indications
 %start main_term
 %type <Expr.lambdaterm> main_term
 
+%start main_typecheck
+%type <Expr.lambdaterm * Expr.lambdaterm> main_typecheck
+
 %start main_statements
 %type <Expr.statement list> main_statements
 
@@ -33,6 +36,9 @@ TODO : some error recovery / indications
 
 main_term:
   | t = lambdaterm EOF { t }
+
+main_typecheck:
+  | t = lambdaterm COLON ty = lambdaterm DOT EOF { (t, ty) }
 
 main_statements:
   | l = list(statement) EOF { l }

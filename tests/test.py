@@ -99,6 +99,30 @@ def test_alpha_should_be_ok(file):
 
     return ok
 
+def test_typecheck_should_be_ok(file):
+    expected = "true" if "true" in file.split(os.sep) else "false"
+    fouine_result = subprocess.run(
+        [EXECUTABLE_PATH, "-typecheck", file],
+        capture_output=True,
+        text=True,
+    )
+
+    stdout_lines = [line.strip() for line in fouine_result.stdout.splitlines() if line.strip() != ""]
+    actual = stdout_lines[-1] if stdout_lines else ""
+
+    ok = fouine_result.returncode == 0 and actual == expected
+
+    if ok:
+        cprint(f"Typecheck test {file} passed", "green")
+    else:
+        cprint(f"Typecheck error in {file}", "red")
+        cprint(f"Expected : {expected}", "red")
+        cprint(f"Actual : {actual}", "red")
+        cprint(f"Stdout : {fouine_result.stdout}", "red")
+        cprint(f"Stderr : {fouine_result.stderr}", "red")
+
+    return ok
+
 cprint("Building Project", "green")
 try:
     caml_result = subprocess.run(
@@ -141,7 +165,14 @@ alpha_files = [
     if f.endswith(".lam")
 ]
 
-nb_test = len(ml_files) + len(should_fail_files) + len(reduce_files) + len(alpha_files)
+typecheck_files = [
+    os.path.join(root, f)
+    for root, dirs, files in os.walk("tests/typecheck")
+    for f in files
+    if f.endswith(".lam")
+]
+
+nb_test = len(ml_files) + len(should_fail_files) + len(reduce_files) + len(alpha_files) + len(typecheck_files)
 
 total = 0
 for file in ml_files:
@@ -152,6 +183,8 @@ for file in reduce_files:
     total += test_reduce_should_be_ok(file)
 for file in alpha_files:
     total += test_alpha_should_be_ok(file)
+for file in typecheck_files:
+    total += test_typecheck_should_be_ok(file)
 
 print()
 if total == nb_test:

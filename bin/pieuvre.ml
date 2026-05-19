@@ -36,7 +36,11 @@ let run () =
   )
   else
   if !typecheck then 
-    failwith "TODO : TYPECHECK" 
+    match !nom_fichier with
+    | "" -> failwith "Please input a file."
+    | filename ->
+      let content = In_channel.with_open_text filename In_channel.input_all in
+      typecheck_opt content
   else
   match !nom_fichier with
     | "" -> (

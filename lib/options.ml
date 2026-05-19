@@ -36,3 +36,20 @@ let reduce_opt (content:string) : unit =
       stop := true
   done
 ;;
+
+(*
+The -typecheck option of the executable
+usage : -typecheck <filename>
+action : takes (in a file) a statement t : T. and prints if t has type T
+*)
+let typecheck_opt (content:string) : unit =
+  let (term, ty) = parse_typecheck content in
+  let ctx = empty_env () in
+  try
+    check_is_type ctx ty;
+    typecheck ctx term ty;
+    print_endline "true"
+  with
+  | Type_error -> print_endline "false"
+  | Unbound_variable _ -> print_endline "false"
+;;

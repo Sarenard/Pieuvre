@@ -1,6 +1,7 @@
 open Expr
 
 let parse_type (ty:string) : lambdaterm = Parser.main_term Lexer.token (Lexing.from_string ty);; 
+let parse_typecheck (content:string) : lambdaterm * lambdaterm = Parser.main_typecheck Lexer.token (Lexing.from_string content);;
 let parse_tactic (ty:string) : tactic = Parser.main_tactic Lexer.token (Lexing.from_string ty);; 
 let parse_statements (ty:string) : statement list = Parser.main_statements Lexer.token (Lexing.from_string ty);; 
 
