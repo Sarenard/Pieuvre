@@ -78,7 +78,7 @@ let interactive () : unit =
   print_string "Goal : ";
   let input = read_line () in
   let lexbuf = Lexing.from_string input in
-  let parse () = Parser.main_term Lexer.token lexbuf in
+  let parse () = Parser.main_term_dot Lexer.token lexbuf in
   let goal = parse () in
   let term = Goal(0, goal) in
   let current = ref term in

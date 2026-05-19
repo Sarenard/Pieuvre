@@ -1,4 +1,4 @@
 (executable
  (name pieuvre)
- (flags (:standard -w -27 -warn-error -A+8))
+ (flags (:standard -w -27))
  (libraries lib))

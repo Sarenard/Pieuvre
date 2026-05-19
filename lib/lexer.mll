@@ -4,8 +4,6 @@
 }
 
 (* définitions d'expressions régulières *)
-let chiffre = ['0'-'9']
-let nombre = chiffre+
 let var = ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']*
                
 rule token = parse

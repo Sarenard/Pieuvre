@@ -209,7 +209,7 @@ let split_at n lst =
 ;;
 
 (*
-Regroups the longer application comb so both lists have the same length
+Regroups the longer application comb (thx zoé !) so both lists have the same length
 regroup [f; x; y; z] [a; b]
 evaluates to
 ([f x y; z], [a; b])

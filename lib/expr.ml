@@ -30,7 +30,6 @@ type lambdaterm =
   | Mvar of mvar (*?x*)
 
   (* produits *)
-  (*TODO : remove that (its a pi isnt it?)*)
   | Prod of lambdaterm * lambdaterm (* le type *)
   | Pair of lambdaterm * lambdaterm
   | Fst of lambdaterm
@@ -71,6 +70,7 @@ type inductive_type = (string * lambdaterm * constructor list)
 ;;
 
 (*TODO : separate gamma into local env and global env*)
+(*TODO : merge gamma and values into a (string * lambdaterm option* * lambdaterm option)*)
 type context = {
   gamma : (string * lambdaterm) list;
   values : (string * lambdaterm) list;
@@ -396,7 +396,6 @@ let rec instantiate_arg_types ind_name ty args =
 
 (*
 Does one step of a beta-reduction
-Do we want to go with a big steps approach?
 *)
 let rec betastep (ctx:context) (term:lambdaterm) : lambdaterm option =
   let rec count_pis = function
@@ -715,12 +714,9 @@ let equiv (ctx:context) a b =
   conv a b
 ;;
 
-(*
-We keep that becaue it is easier to give an empty env
-and so that we have it if one day we need to have things in the empty_env
-*)
 let empty_env () = { gamma = []; inductive_types = []; values = []};;
 
+(*TODO : better error handling*)
 exception Type_error;;
 exception Unexpected_goal;;
 exception Unbound_variable of string;;
@@ -729,7 +725,7 @@ let debug s = (*print_endline s*) ()
 
 (*
 This checks if something is of type Type
-  we will need to change that when we will handle universes
+we will need to change that when we will handle universes
 *)
 let rec check_is_type gamma ty =
   match reduce gamma (infer gamma ty) with
@@ -891,12 +887,11 @@ and infer (gamma:context) (term:lambdaterm) : lambdaterm =
   )
 
 (*
-Checks that the type of term is ~_alpha-beta to ty
+Checks that the type of term is ty (by using infer)
 does nothing or raises an error
 *)
 and typecheck (gamma:context) (term:lambdaterm) (ty:lambdaterm) : unit =
   let type_of_term = infer gamma term in
-  (*print_endline ("typed " ^ affiche_lam type_of_term ^ " | expecting " ^ affiche_lam ty);*)
   if equiv gamma type_of_term ty then
     ()
   else

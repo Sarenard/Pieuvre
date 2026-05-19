@@ -7,6 +7,7 @@ This is the function that handles tactics
 gamma : context of the goal
 gamma' : context of the theorem
 *)
+(*TODO : make this with auxiliaries functions and not everything in one big blob*)
 let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : lambdaterm =  
   let gamma_var = gamma.gamma in
   let gamma_var' = gamma'.gamma in
@@ -90,6 +91,7 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
             | InR(a, b) -> InR(materialize_term sigma a, materialize_term sigma b)
             | Match(a, b, c) -> Match(materialize_term sigma a, materialize_term sigma b, materialize_term sigma c)
           in
+          (*the idea is to match with the right right side*)
           let rec collect_args args fty =
             try
               let sigma' = unify sigma big_gamma fty ty in
@@ -166,7 +168,7 @@ let handle_tactic (i, (gamma:context), _locgoal) (gamma':context) term tactic : 
       | Some _ ->
         let replace_goal goal =
           match goal with
-          | Goal(k, _ty) when k = i -> failwith ("TODO INDUCTION " ^ x)
+          | Goal(k, _ty) when k = i -> failwith ("Induction on " ^ x ^ " is not yet implemented, please use the recursor directly.")
           | _ -> goal
         in run_replace term replace_goal
     )

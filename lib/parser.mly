@@ -13,7 +13,6 @@ TODO : some error recovery / indications
 %token INTRO TRIVIAL EXACT DOT MEOW APPLY CUT SPLIT DESTRUCT LEFT RIGHT SIMPL INDUCTION STEP
 /*STATEMENTS*/
 %token THEOREM PROOF INDUCTIVE DEFINE DEFINITION
-%token <int> INT       /* le lexème INT a un attribut entier */
 %token <string> VAR
 
 /* PART 2, PRIORITIES *********** */

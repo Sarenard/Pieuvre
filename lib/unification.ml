@@ -126,9 +126,9 @@ let extend_context (ctx : context) (x : string) (ty : lt) : context = {
 (*
 based on https://www.cambridge.org/core/services/aop-cambridge-core/content/view/19A095CA0645F89A772B7E2B7B3D92B2/S0956796817000028a.pdf/a-comprehensible-guide-to-a-new-unifier-for-cic-including-universe-polymorphism-and-overloading.pdf
 but for now its too complicated
-we go back to an easier unification algorithm
+we go back to an easier and naive unification algorithm
 *)
-(*TODO : add reductions*)
+(*TODO : add reductions when nessessary and not every time unify is called*)
 let rec unify (sigma0:sigma) (ctx:context) (e1:lt) (e2:lt) : sigma =
   let e1 = whnf ctx (apply_sigma sigma0 e1) in
   let e2 = whnf ctx (apply_sigma sigma0 e2) in
@@ -184,6 +184,8 @@ and unify_pairs (sigma : sigma) (ctx : context) (list1 : lt list) (list2 : lt li
   | _, _ -> raise (UnificationError(delinearize_list list1, delinearize_list list2))
 ;;
 
+(*TODO : make a good testing interface instead of this*)
+
 let test menv ctx e1 e2 = 
   try 
     let new_sigma = unify menv ctx e1 e2 in
@@ -196,7 +198,6 @@ let test menv ctx e1 e2 =
   ;
 ;;
 
-(*for tests*)
 let unify_run () = 
   test (fresh_sigma ()) (empty_env ()) Type Type; 
   test (fresh_sigma ()) (empty_env ()) (Var("x")) (Var("y")); 

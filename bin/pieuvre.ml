@@ -1,10 +1,9 @@
 open Lib
 open! Interactive
 open Automatic
-open Util
 open Options
 
-let nom_fichier = ref ""
+let file_name = ref ""
 
 let reduce = ref false
 let alpha = ref false
@@ -17,10 +16,10 @@ let run () =
       ("-alpha", Arg.Set alpha, "Checks in file containing \"u & v\", if u alpha equivalent to v");
       ("-typecheck", Arg.Set typecheck, "Checks in file containt \"t: tu\", if t has type tu")
     ] 
-    (fun s -> nom_fichier := s)
+    (fun s -> file_name := s)
     "";
   if !reduce then (
-    match !nom_fichier with
+    match !file_name with
     | "" -> failwith "Please input a file."
     | filename -> 
       let content = In_channel.with_open_text filename In_channel.input_all in 
@@ -28,7 +27,7 @@ let run () =
   )
   else
   if !alpha then (
-    match !nom_fichier with
+    match !file_name with
     | "" -> failwith "Please input a file."
     | filename ->
       let content = In_channel.with_open_text filename In_channel.input_all in
@@ -36,13 +35,13 @@ let run () =
   )
   else
   if !typecheck then 
-    match !nom_fichier with
+    match !file_name with
     | "" -> failwith "Please input a file."
     | filename ->
       let content = In_channel.with_open_text filename In_channel.input_all in
       typecheck_opt content
   else
-  match !nom_fichier with
+  match !file_name with
     | "" -> (
       (*Interactive UI*)
       interactive ();
