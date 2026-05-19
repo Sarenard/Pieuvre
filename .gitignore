@@ -39,3 +39,4 @@ tests/temp.8pus
 
 .codex
 _hidden/
+**/__pycache__
