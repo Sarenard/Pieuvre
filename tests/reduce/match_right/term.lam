@@ -2,4 +2,4 @@ Match(
   InR(Type, ((fun (x : Type) => x) Type)),
   (fun (u : Type) => u),
   (fun (u : Type) => ((fun (v : Type) => v) u))
-)
+).

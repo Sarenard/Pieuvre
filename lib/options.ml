@@ -22,7 +22,7 @@ usage : -reduce <filename>
 action : takes (in a file) a lt and prints the series of its reductions
 *)
 let reduce_opt (content:string) : unit =
-  let lt = parse_type content in
+  let lt = parse_type_dot content in
   let ctx = empty_env () in
   let current = ref lt in
   let stop = ref false in

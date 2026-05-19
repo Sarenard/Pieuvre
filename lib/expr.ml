@@ -147,9 +147,9 @@ let affiche_lam_with_inductives inductive_types ty : string =
     | Pi("_", a, b) ->
       paren a ^ " -> " ^ sparen b
     | Pi(x, a, b) -> "(" ^ x ^ " : " ^ aux a ^ ") -> " ^ sparen b
-    | Func(x, a, b) -> "fun " ^ x ^ " : " ^ aux a ^ " => " ^ aux b
+    | Func(x, a, b) -> "fun (" ^ x ^ " : " ^ aux a ^ ") => " ^ aux b
     | App(a, b) -> sparen a ^ " " ^ paren b
-    | Goal(_, a) -> "Goal(" ^ aux a ^ ")"
+    | Goal(_, _a) -> "[?]"
     | Prod(a, b) -> paren a ^ " /\\ " ^ paren b
     | Pair(a, b) -> "(" ^ aux a ^ ", " ^ aux b ^ ")"
     | Fst(a) -> "Fst(" ^ aux a ^ ")"
@@ -224,7 +224,7 @@ let alpha term1 term2 =
         && List.length args1 = List.length args2
         && List.for_all2 (alpha_aux env12 env21) args1 args2
     | Match(a, b, c), Match(a', b', c') ->
-      alpha_aux env12 env21 a a' && alpha_aux env12 env12 b b' && alpha_aux env12 env21 c c'
+      alpha_aux env12 env21 a a' && alpha_aux env12 env21 b b' && alpha_aux env12 env21 c c'
     | _ -> false
   in
   alpha_aux [] [] term1 term2

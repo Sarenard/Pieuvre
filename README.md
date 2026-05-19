@@ -11,3 +11,9 @@ Command to run pieuvre on a file :
 ```bash
 dune build && rlwrap _build/default/bin/pieuvre.exe <filename>
 ```
+
+Command to launch the tests :
+
+```bash
+python3 tests/test.py
+```

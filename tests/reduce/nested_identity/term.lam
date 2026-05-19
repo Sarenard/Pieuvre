@@ -1,1 +1,1 @@
-((fun (x : Type) => x) ((fun (y : Type) => y) Type))
+((fun (x : Type) => x) ((fun (y : Type) => y) Type)).

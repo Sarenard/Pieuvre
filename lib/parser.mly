@@ -23,6 +23,9 @@ TODO : some error recovery / indications
 %start main_term
 %type <Expr.lambdaterm> main_term
 
+%start main_term_dot
+%type <Expr.lambdaterm> main_term_dot
+
 %start main_typecheck
 %type <Expr.lambdaterm * Expr.lambdaterm> main_typecheck
 
@@ -36,6 +39,9 @@ TODO : some error recovery / indications
 
 main_term:
   | t = lambdaterm EOF { t }
+
+main_term_dot:
+  | t = lambdaterm DOT EOF { t }
 
 main_typecheck:
   | t = lambdaterm COLON ty = lambdaterm DOT EOF { (t, ty) }

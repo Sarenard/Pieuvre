@@ -31,7 +31,7 @@ let affiche_goal (_i, gamma, ty) : unit =
   print_string "Goal :";
   print_newline ();
   affiche_context gamma;
-  print_string "----------------";
+  print_string "=========";
   print_newline ();
   print_endline (affiche_lam ty);
 ;;

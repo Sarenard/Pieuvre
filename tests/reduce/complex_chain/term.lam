@@ -17,4 +17,4 @@ Fst(
         (fun (u : Type) => (u, u))
       )
     ) Type)
-)
+).
